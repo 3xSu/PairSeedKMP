@@ -1,0 +1,7 @@
+package com.pairseedkmp
+
+interface Platform {
+    val name: String
+}
+
+expect fun getPlatform(): Platform
