@@ -1,0 +1,12 @@
+-- 角色组共享设定：一对一条（UNIQUE(pack_id)）；纯附属设定表，不加 is_deleted，要删就真删
+-- shared_confirm_tags / shared_scene_rules / shared_growth_policy 旧列不建（标签门控、全零读写、成长项一起砍）
+CREATE TABLE pair_shared_specs (
+    id INTEGER PRIMARY KEY,
+    pack_id INTEGER NOT NULL,                 -- 属于哪个角色组
+    pair_summary TEXT NOT NULL,               -- 角色组整体摘要（= 用户填的"关系描述"）
+    relation_tone_summary TEXT NOT NULL,      -- 关系基调摘要（= 用户填的"相处基调"）
+    shared_forbidden_tags TEXT,               -- 共享禁区标签 JSON；喂给 AI 读，不做集合匹配
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (pack_id)                          -- 一对关系一条（防重）
+);

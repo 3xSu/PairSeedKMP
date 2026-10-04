@@ -1,0 +1,16 @@
+-- 半固定事件模板：睡觉、吃饭这类生活骨架；预设，跟着角色组走
+-- 不进事件表——发生时才在 events 里落一条记录（历史页 / 7 天过期 / 状态机全部复用）
+CREATE TABLE semi_fixed_event_templates (
+    id INTEGER PRIMARY KEY,
+    pack_id INTEGER NOT NULL,                 -- 属于哪个角色组
+    template_code TEXT NOT NULL,              -- 模板代码（sleep / meal…）
+    name_cn TEXT NOT NULL,                    -- 名字（历史页显示用）
+    summary TEXT NOT NULL,                    -- 概要（历史页显示用）
+    steps TEXT NOT NULL,                      -- 预设步骤 JSON（可放几个变体轮着用）；不用 AI；形状同 events.steps
+    window_earliest INTEGER NOT NULL,         -- 时间窗最早：当天 00:00 起分钟数（0–1439）
+    window_latest INTEGER NOT NULL,           -- 时间窗最晚：同上；与 earliest 相等 = 固定时刻；早 > 晚 = 跨天
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (pack_id, template_code)           -- 预设种子数据防重
+);

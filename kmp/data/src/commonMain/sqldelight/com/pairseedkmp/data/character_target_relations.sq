@@ -1,0 +1,16 @@
+-- 角色关系：有方向（甲对乙 ≠ 乙对甲；每角色一行，双向各一条）；生成和判定都喂 AI；纯附属表，不加 is_deleted
+CREATE TABLE character_target_relations (
+    id INTEGER PRIMARY KEY,
+    character_id INTEGER NOT NULL,            -- 这一角色
+    target_character_id INTEGER NOT NULL,     -- 对那一角色
+    toward_target_summary TEXT NOT NULL,      -- 关系摘要（这一角色对那一角色的）
+    default_distance TEXT NOT NULL,           -- 默认关系距离
+    likely_initiation_modes TEXT,             -- 更可能主动发起的行为 JSON（"谁发起"由它定）
+    sensitive_progression_tags TEXT,          -- 高风险推进标签 JSON（整段喂 AI 读，不做集合交集）
+    safe_comfort_actions TEXT,                -- 稳定安全互动类型 JSON（生成时的安全区）
+    direct_addressing_summary TEXT,           -- 当面称呼摘要
+    reference_addressing_summary TEXT,        -- 对外提及时的称呼摘要
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (character_id, target_character_id) -- 一人对一人一条（防重）
+);

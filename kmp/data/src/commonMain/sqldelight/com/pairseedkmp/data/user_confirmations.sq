@@ -1,0 +1,9 @@
+-- 确认记录：用户在历史页答过的每一次
+-- 只插不删（没有 is_deleted / updated_at）；改答 = 再插一条，按 answered_at 最新生效
+CREATE TABLE user_confirmations (
+    id INTEGER PRIMARY KEY,
+    event_id INTEGER NOT NULL,                -- 对应事件
+    answered_period TEXT NOT NULL,            -- 这次回答针对的时段：MORNING / AFTERNOON / EVENING / NIGHT
+    answer TEXT NOT NULL,                     -- YES / NO
+    answered_at INTEGER NOT NULL              -- 答的时刻（Unix 毫秒）；兼作 created_at
+);

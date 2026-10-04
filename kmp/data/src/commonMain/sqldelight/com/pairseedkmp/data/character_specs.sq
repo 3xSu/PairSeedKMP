@@ -1,0 +1,28 @@
+-- 角色设定主表：一角色一条（UNIQUE(character_id)）；喂 AI 的卡与程序用的外观都在这；纯附属表，不加 is_deleted
+-- soft_axes JSON（五维四档，每维可不选——只存选了的维度，键省略）：
+--   { "proactivity": { "level": 1-4, "text": "<翻成的自然语言>", "customized": 0/1 }, ... }
+--   五维键：proactivity 主动性 / emotion_visibility 情绪外露 / expression_mode 表达方式 /
+--           physical_intimacy 身体接触 / verbal_directness 说话直接度（后三个与事件三维 comparison_axes 同名对齐）
+--   customized = 1：用户改过 text，不再从档位重新生成
+-- body_spec / wardrobe JSON（程序渲图与换装用，不喂 AI）：
+--   body_spec：{ "head": {"diameter":…, "color":"#RRGGBB"}, "torso": {"width":…, "height":…, "color":…},
+--                "hand": {"diameter":…, "color":…}, "foot": {"diameter":…, "color":…},
+--                "eyes": {"size":…, "color":…}, "mouth": {"size":…} }；尺寸一律像素
+--   wardrobe：{ "hair": [ {"index": 序号, "name": 名, "source": "PRESET|USER"} ], "outfit": […],
+--               "current_hair": 索引, "current_outfit": 索引 }
+--     图文件：hair/ 、outfit/ 子目录下 {character_code}_{index}.png；预设打包在 APK（只读）、用户画的写 app 本地数据目录，
+--     位置由 source 决定，两处分开存、合着读
+CREATE TABLE character_specs (
+    id INTEGER PRIMARY KEY,
+    character_id INTEGER NOT NULL,            -- 属于哪个角色（一角色一条）
+    aliases TEXT,                             -- 名字变体 / 检索别名 JSON 数组；喂 AI 读
+    soft_axes TEXT NOT NULL,                  -- 软性格轴 JSON（五维四档，见文件头注）；{} = 一维都没选
+    speech_style_summary TEXT NOT NULL,       -- 说话风格摘要（一句话）
+    preferred_affection_modes TEXT,           -- 偏好的示好方式 JSON；保留但不再做集合匹配，改成喂 AI 读
+    disliked_affection_modes TEXT,            -- 不偏好的示好方式 JSON；同上
+    body_spec TEXT NOT NULL,                  -- 体型参数 JSON（程序渲图用；见文件头注）
+    wardrobe TEXT NOT NULL,                   -- 衣柜索引 JSON（见文件头注）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (character_id)                     -- 一角色一条（防重）
+);

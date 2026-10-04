@@ -1,0 +1,12 @@
+-- 物件实例：放一件一行，只有"谁、在哪"；两把一样的椅子 = 两行、共用一条定义
+-- 只有物品的 grid_x / grid_y 会被事件改（家具的不动）——事务只写这一层
+CREATE TABLE scene_object_instances (
+    id INTEGER PRIMARY KEY,
+    scene_id INTEGER NOT NULL,                -- 在哪个场景
+    object_def_code TEXT NOT NULL,            -- 是哪件东西（引用 scene_object_defs.object_code）
+    grid_x INTEGER NOT NULL,                  -- 当前在哪一格（列）
+    grid_y INTEGER NOT NULL,                  -- 当前在哪一格（行）
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1（删家具 = 删这一行，定义还在）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);

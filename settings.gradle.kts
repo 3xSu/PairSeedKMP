@@ -16,4 +16,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "PairSeedKMP"
 include(":androidApp")
-include(":shared")
+include(":kmp:domain")
+include(":kmp:data")
+include(":kmp:ui")

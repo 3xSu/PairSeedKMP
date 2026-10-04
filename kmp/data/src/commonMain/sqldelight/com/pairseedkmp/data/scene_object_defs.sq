@@ -1,0 +1,19 @@
+-- 物件定义：一个类型一行（跟家里有几件无关）；"加家具"能做成插一行；事件永远不碰这张表，只有改素材时动
+-- interact_slot_* / placeable_mask 用相对坐标（相对物件自己的左上角）——挪家具不用重画 mask
+CREATE TABLE scene_object_defs (
+    id INTEGER PRIMARY KEY,
+    object_code TEXT NOT NULL,                -- 物件代码（stove / cup / sofa），事件用它引用
+    name_cn TEXT NOT NULL,                    -- 中文名
+    is_portable INTEGER NOT NULL,             -- 0 / 1：能不能被拿起放下（决定「拿」「放」能否作用于它）
+    image_path TEXT NOT NULL,                 -- 样式图（/assets/scene/objects/chair.png）
+    footprint_w INTEGER NOT NULL,             -- 占地宽（格）
+    footprint_h INTEGER NOT NULL,             -- 占地高（格）
+    z_order INTEGER NOT NULL,                 -- 遮挡顺序（前后景）
+    interact_slot_x INTEGER,                  -- 互动站位 X（相对坐标；家具才有，NULL = 无）
+    interact_slot_y INTEGER,                  -- 互动站位 Y（同上）
+    placeable_mask TEXT,                      -- 台面可放置区（局部位图 base64；家具才有，NULL = 无）
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (object_code)                      -- 物件代码唯一（防重）
+);

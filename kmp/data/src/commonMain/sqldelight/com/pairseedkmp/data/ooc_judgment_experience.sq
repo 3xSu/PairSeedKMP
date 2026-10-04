@@ -1,0 +1,16 @@
+-- 裁决经验：用户答过的，同类情形下次有先例（只用一级回答）；签名从 scene_type 起头
+-- event_type / relation_band / actor_scope / mode_lock 旧列不建（没有数据源；实签名只剩 scene_type 一段）
+CREATE TABLE ooc_judgment_experience (
+    id INTEGER PRIMARY KEY,
+    pack_id INTEGER NOT NULL,                 -- 角色组 ID
+    scene_type TEXT NOT NULL,                 -- 场景类型（签名起头）
+    constraint_signature TEXT NOT NULL,       -- 约束组合签名
+    approve_count INTEGER NOT NULL DEFAULT 0, -- 通过次数
+    reject_count INTEGER NOT NULL DEFAULT 0,  -- 拒绝次数
+    last_confirmation_at INTEGER,             -- 最近一次确认时间（Unix 毫秒）
+    last_confirmation_id INTEGER,             -- 最近一次确认记录 ID
+    notes_snapshot TEXT,                      -- 经验摘要快照
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (pack_id, constraint_signature)    -- 同组同签名一条（防重）
+);

@@ -1,0 +1,25 @@
+-- 基础动作库：单人 13 + 双人 4 的闭集，AI 只挑不编、只看得到动作名（挑只读 description 那句英文）
+-- 四肢参数全局一份（存这里），所有角色、所有事件复用；没有帧号——四肢是点的位置在变，由参数算
+-- limbs JSON（程序渲染用，不喂 AI）：
+--   只列会动的肢体（未列出 = 静止 STILL）；left_hand / right_hand / left_foot / right_foot 四键均可省略
+--   { "left_hand": { "motion": "STILL|SWAY|UP_DOWN|CIRCLE",   静止 / 左右往复 / 上下 / 画圈
+--                    "amplitude": 摆动幅度（像素，值域随渲染实现定）,
+--                    "frequency": 每秒往返次数,
+--                    "duration_sec": 秒（该肢体动多久，不超过行级 duration_seconds） }, ... }
+CREATE TABLE behavior_templates (
+    id INTEGER PRIMARY KEY,
+    behavior_code TEXT NOT NULL,              -- 动作代码（walk / say…），步骤通过它引用
+    behavior_name TEXT NOT NULL,              -- 动作名（英文；喂 AI 时可见）
+    description TEXT,                         -- 行为描述（英文，供 LLM 理解）——AI 挑动作就靠它
+    description_cn TEXT,                      -- 中文简短介绍（供用户 / 前端展示）；{actor} / {target} 占位符约定保留
+    scope TEXT NOT NULL,                      -- single / pair（单人或双人动作）
+    position_change TEXT NOT NULL DEFAULT 'none', -- none / approach / retreat / carry
+    direction TEXT NOT NULL DEFAULT 'bidirectional', -- bidirectional = {actor} 映 actor_code（不交换）/ b_to_a = 交换映射
+    duration_seconds INTEGER NOT NULL DEFAULT 5, -- 行为执行时长（秒）；进度条、事件时长加总用
+    limbs TEXT NOT NULL,                      -- 四肢参数 JSON（见文件头注）
+    sort_order INTEGER NOT NULL DEFAULT 0,    -- 排序（动作列表喂 AI 按它排）
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1（旧 is_active 并入）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (behavior_code)                    -- 动作代码唯一（防重）
+);

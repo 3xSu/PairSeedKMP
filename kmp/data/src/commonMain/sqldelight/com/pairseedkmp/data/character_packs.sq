@@ -1,0 +1,11 @@
+-- 角色组主表：一对 CP 就是一个 pack，所有数据都挂在它下面
+CREATE TABLE character_packs (
+    id INTEGER PRIMARY KEY,
+    pack_code TEXT NOT NULL,                  -- 唯一编码
+    pack_name TEXT NOT NULL,                  -- 名称
+    description TEXT,                         -- 简要说明
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1（旧 status 并入）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (pack_code)                        -- 编码唯一（防重）
+);

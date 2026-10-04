@@ -1,0 +1,14 @@
+-- 角色硬边界：用户填的"不会做的事"；判定时作为约束喂给 AI（读 description 自然语言），不做标签匹配
+-- trigger_tags 旧列不建（不再是拦截依据之后就没有读者了）；纯附属表，不加 is_deleted
+CREATE TABLE character_hard_rules (
+    id INTEGER PRIMARY KEY,
+    character_id INTEGER NOT NULL,            -- 属于哪个角色
+    rule_key TEXT NOT NULL,                   -- 规则键
+    scope TEXT NOT NULL,                      -- 作用域：always / public / private
+    description TEXT NOT NULL,                -- 规则描述（自然语言；AI 读它）
+    notes TEXT,                               -- 补充说明
+    sort_order INTEGER NOT NULL DEFAULT 0,    -- 顺序
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (character_id, rule_key)           -- 角色内规则键唯一（防重）
+);

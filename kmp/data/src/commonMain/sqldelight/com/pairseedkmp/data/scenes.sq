@@ -1,0 +1,21 @@
+-- 场景：现在只有一张"家"；性质（私密 / 公开）写在场景上，事件顺着 scene_id 查，不复制
+-- 两张 mask 都是地板层、互不代替：可走 ≠ 可放置（床前空地能走但放不了东西；地毯上能放但走不过去）
+-- mask 存法：每格 1 bit 的位图，base64 存成一个字符串（1920×1080、32px 格子 ≈ 255 字节）
+CREATE TABLE scenes (
+    id INTEGER PRIMARY KEY,
+    pack_id INTEGER NOT NULL,                 -- 属于哪个角色组
+    scene_code TEXT NOT NULL,                 -- 场景编码
+    scene_name TEXT NOT NULL,                 -- 场景名
+    location_type TEXT,                       -- PRIVATE（私密）/ PUBLIC（公开）
+    description TEXT,                         -- 描述
+    scene_image TEXT NOT NULL,                -- 场景图（一张底图，不换）
+    grid_size INTEGER NOT NULL,               -- 格子边长（像素），如 32
+    grid_cols INTEGER NOT NULL,               -- 栅格列数
+    grid_rows INTEGER NOT NULL,               -- 栅格行数
+    walk_mask TEXT NOT NULL,                  -- 可走范围位图（base64）：角色的脚能落在哪些格子
+    place_mask TEXT NOT NULL,                 -- 地板可放置位图（base64）：地板上哪些格子能放东西
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1（旧 status 并入）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (pack_id, scene_code)              -- 场景身份唯一（防重）
+);

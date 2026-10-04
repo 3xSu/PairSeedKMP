@@ -1,0 +1,20 @@
+-- 文档库 = 精选素材（不是 memory 池）：voice_ref / activity_ref 各取 6 条、正文截 200 字喂生成提示词
+-- FTS5 暂缓（真做文档检索时再加）；旧 4 列不建（2026-10-04 拍）：confidence / priority（召回排序键，旧读者在召回链上）、
+-- last_verified_at / stale_after（保鲜时间，从没写过值）——等召回实现时再加，成本极低
+CREATE TABLE document_snippets (
+    id INTEGER PRIMARY KEY,
+    doc_code TEXT NOT NULL,                   -- 文档唯一编码
+    doc_type TEXT NOT NULL,                   -- voice_ref / activity_ref / evidence / raw_spec
+    pack_code TEXT NOT NULL,                  -- 所属 pack 编码
+    scope TEXT NOT NULL DEFAULT 'character',  -- character / pair / global
+    character_code TEXT,                      -- 关联角色编码（scope = character 时使用）
+    title TEXT,                               -- 文档标题
+    summary TEXT,                             -- 文档摘要（检索用，不含正文细节）
+    body TEXT,                                -- 文档正文（二阶段召回时回取）
+    tags TEXT,                                -- 标签 JSON 数组（用于结构化过滤）
+    source_ref TEXT,                          -- 来源引用
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1（旧 is_active 并入）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE (doc_code)                         -- 文档编码唯一（防重）
+);

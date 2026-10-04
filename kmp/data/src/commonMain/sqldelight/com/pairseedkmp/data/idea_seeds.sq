@@ -1,0 +1,18 @@
+-- 种子记录：事件的发散起点。种子池全局一份，不按角色组隔离（2026-10-03 拍）
+-- 对照《数据设计·种子记录》；枚举存英文 code；时间一律 Unix 毫秒
+CREATE TABLE idea_seeds (
+    id INTEGER PRIMARY KEY,
+    keyword TEXT NOT NULL,                    -- 灵感词；种子唯一的业务字段，随种子进提示词
+    theme TEXT NOT NULL,                      -- 互动主题（care / intimacy…）
+    scene_hint_tags TEXT,                     -- 场景提示标签 JSON
+    suggested_time_window TEXT,               -- 建议触发时段：MORNING / AFTERNOON / EVENING / NIGHT；NULL = 不限
+    relationship_push_target INTEGER,         -- 目标推进强度
+    novelty_target INTEGER,                   -- 目标新鲜度
+    source_type TEXT NOT NULL,                -- MANUAL / AI_VARIANT / PRESET
+    quality_score INTEGER,                    -- 可选质量分
+    picked_count INTEGER NOT NULL DEFAULT 0,  -- 被挑中次数（挑选时按次数反比加权）
+    last_picked_at INTEGER,                   -- 最近被挑中时间（Unix 毫秒）；没被挑过 NULL
+    is_deleted INTEGER NOT NULL DEFAULT 0,    -- 0 / 1；置位后不参与生成，数据保留
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
