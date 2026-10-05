@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // 领域层（:kmp:domain）：业务模型与规则；纯 Kotlin 优先，不依赖 Android。
@@ -25,6 +26,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // 领域层依赖从这里加
+            // api：EventStep.params 是 JsonObject，属公开模型的一部分
+            api(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

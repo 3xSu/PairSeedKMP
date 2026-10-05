@@ -25,8 +25,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            // SQLDelight 运行时（生成代码依赖）；`:kmp:domain` 依赖随领域逻辑接入再加
+            // SQLDelight 运行时（生成代码依赖）
             implementation(libs.sqldelight.runtime)
+            // 领域端口与模型（依赖方向：data → domain）
+            implementation(projects.kmp.domain)
         }
         androidMain.dependencies {
             // Android 建库驱动（步骤 4）；iOS 驱动留到做 iOS 时补

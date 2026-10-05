@@ -9,3 +9,20 @@ CREATE TABLE character_packs (
     updated_at INTEGER NOT NULL,
     UNIQUE (pack_code)                        -- 编码唯一（防重）
 );
+
+-- ===== 命名查询（步骤 6：调试种子与壳）=====
+
+-- 按编码查（种子幂等判断：种过就不再种）
+selectCharacterPackByCode:
+SELECT * FROM character_packs WHERE pack_code = ?;
+
+-- 按 id 查（壳层显示当前角色组名用）
+selectCharacterPackById:
+SELECT * FROM character_packs WHERE id = ?;
+
+insertCharacterPack:
+INSERT INTO character_packs (pack_code, pack_name, description, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?);
+
+lastInsertedCharacterPackId:
+SELECT last_insert_rowid();

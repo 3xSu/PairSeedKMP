@@ -23,3 +23,20 @@ CREATE TABLE behavior_templates (
     updated_at INTEGER NOT NULL,
     UNIQUE (behavior_code)                    -- 动作代码唯一（防重）
 );
+
+-- ===== 命名查询（步骤 3：结算核心）=====
+
+-- 按动作 code 查时长（步骤位置 / 时长加总用）；查不到 / 已删 → 无行
+selectDurationSecondsByCode:
+SELECT duration_seconds FROM behavior_templates
+WHERE behavior_code = ? AND is_deleted = 0;
+
+-- ===== 命名查询（步骤 6：调试种子）=====
+
+-- 种子行按新动作码新写（旧仓库没有对应行）；INSERT OR IGNORE：code 唯一，重复跑不炸也不覆盖
+insertBehaviorTemplate:
+INSERT OR IGNORE INTO behavior_templates (
+    behavior_code, behavior_name, description, description_cn, scope, position_change,
+    duration_seconds, limbs, sort_order, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

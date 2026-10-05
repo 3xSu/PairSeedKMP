@@ -6,6 +6,24 @@ CREATE TABLE runtime_profiles (
     active_scene_id INTEGER,                  -- 当前生效的场景；首启还没有 → NULL
     on_device_model TEXT,                     -- 端侧小模型标识；未选 → NULL
     api_key_configured INTEGER NOT NULL DEFAULT 0, -- 是否已配置 API Key：0 / 1（Key 本体不落库、不进日志）
+    last_seen_at INTEGER,                     -- app 存活心跳（Unix 毫秒）：结算时更新；判"窗口是否整段落在离线空白里"；首启未记 → NULL
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
+
+-- ===== 命名查询（步骤 2：数据访问）=====
+
+selectRuntimeProfile:
+SELECT * FROM runtime_profiles ORDER BY id DESC LIMIT 1;
+
+insertRuntimeProfile:
+INSERT INTO runtime_profiles (
+    active_pack_id, active_scene_id, on_device_model, api_key_configured, last_seen_at, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+lastInsertedRuntimeProfileId:
+SELECT last_insert_rowid();
+
+updateRuntimeProfileHeartbeat:
+UPDATE runtime_profiles SET last_seen_at = ?, updated_at = ? WHERE id = ?;

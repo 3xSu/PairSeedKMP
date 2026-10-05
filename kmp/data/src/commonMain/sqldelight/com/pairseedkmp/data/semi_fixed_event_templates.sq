@@ -1,5 +1,5 @@
 -- 半固定事件模板：睡觉、吃饭这类生活骨架；预设，跟着角色组走
--- 不进事件表——发生时才在 events 里落一条记录（历史页 / 7 天过期 / 状态机全部复用）
+-- 不进事件表——发生时才在 events 里落一条记录（历史页 / 状态机 / 过期机制复用）
 CREATE TABLE semi_fixed_event_templates (
     id INTEGER PRIMARY KEY,
     pack_id INTEGER NOT NULL,                 -- 属于哪个角色组
@@ -14,3 +14,18 @@ CREATE TABLE semi_fixed_event_templates (
     updated_at INTEGER NOT NULL,
     UNIQUE (pack_id, template_code)           -- 预设种子数据防重
 );
+
+-- ===== 命名查询（步骤 2：数据访问）=====
+
+selectSemiFixedTemplatesByPack:
+SELECT * FROM semi_fixed_event_templates WHERE pack_id = ? AND is_deleted = 0;
+
+-- 调试种子用；UNIQUE (pack_id, template_code) 防重 → OR IGNORE 幂等（被忽略时返回的 rowid 是上一条，种子不关心）
+insertSemiFixedTemplate:
+INSERT OR IGNORE INTO semi_fixed_event_templates (
+    pack_id, template_code, name_cn, summary, steps, window_earliest, window_latest, is_deleted, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+
+lastInsertedSemiFixedTemplateId:
+SELECT last_insert_rowid();

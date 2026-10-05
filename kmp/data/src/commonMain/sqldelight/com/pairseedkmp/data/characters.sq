@@ -10,3 +10,16 @@ CREATE TABLE characters (
     updated_at INTEGER NOT NULL,
     UNIQUE (pack_id, character_code)          -- 组内编码唯一（防重）
 );
+
+-- ===== 命名查询（步骤 6：调试种子与壳）=====
+
+insertCharacter:
+INSERT INTO characters (pack_id, character_code, character_name, summary, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+lastInsertedCharacterId:
+SELECT last_insert_rowid();
+
+-- 组内全部角色，按 id 排（壳层解析 actor / target：第一个 = actor、第二个 = target）
+selectCharactersByPack:
+SELECT * FROM characters WHERE pack_id = ? AND is_deleted = 0 ORDER BY id;

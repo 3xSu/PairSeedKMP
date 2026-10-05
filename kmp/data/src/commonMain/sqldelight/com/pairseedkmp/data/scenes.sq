@@ -19,3 +19,22 @@ CREATE TABLE scenes (
     updated_at INTEGER NOT NULL,
     UNIQUE (pack_id, scene_code)              -- 场景身份唯一（防重）
 );
+
+-- ===== 命名查询（步骤 6：调试种子与壳）=====
+
+insertScene:
+INSERT INTO scenes (
+    pack_id, scene_code, scene_name, location_type, description, scene_image,
+    grid_size, grid_cols, grid_rows, walk_mask, place_mask, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+lastInsertedSceneId:
+SELECT last_insert_rowid();
+
+selectSceneById:
+SELECT * FROM scenes WHERE id = ?;
+
+-- 组内全部场景，按 id 排（壳层兜底：运行配置没指场景时取第一个）
+selectScenesByPack:
+SELECT * FROM scenes WHERE pack_id = ? AND is_deleted = 0 ORDER BY id;

@@ -10,3 +10,12 @@ CREATE TABLE pair_shared_specs (
     updated_at INTEGER NOT NULL,
     UNIQUE (pack_id)                          -- 一对关系一条（防重）
 );
+
+-- ===== 命名查询（步骤 6：调试种子）=====
+
+insertPairSharedSpec:
+INSERT INTO pair_shared_specs (pack_id, pair_summary, relation_tone_summary, shared_forbidden_tags, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+lastInsertedPairSharedSpecId:
+SELECT last_insert_rowid();

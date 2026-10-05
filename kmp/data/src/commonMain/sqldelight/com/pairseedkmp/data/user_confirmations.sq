@@ -7,3 +7,16 @@ CREATE TABLE user_confirmations (
     answer TEXT NOT NULL,                     -- YES / NO
     answered_at INTEGER NOT NULL              -- 答的时刻（Unix 毫秒）；兼作 created_at
 );
+
+-- ===== 命名查询（步骤 2：数据访问）=====
+
+insertUserConfirmation:
+INSERT INTO user_confirmations (event_id, answered_period, answer, answered_at)
+VALUES (?, ?, ?, ?);
+
+lastInsertedUserConfirmationId:
+SELECT last_insert_rowid();
+
+-- 该事件最新一条：按 answered_at 最大；同刻按 id 最大（改答 = 再插一条）
+selectLatestUserConfirmation:
+SELECT * FROM user_confirmations WHERE event_id = ? ORDER BY answered_at DESC, id DESC LIMIT 1;

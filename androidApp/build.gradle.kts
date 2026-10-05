@@ -38,5 +38,9 @@ android {
 
 dependencies {
     implementation(projects.kmp.ui)
+    implementation(projects.kmp.data)
+    implementation(projects.kmp.domain)
     implementation(libs.androidx.activity.compose)
+    // 壳层管 driver 生命周期（清空数据重来要关驱动 → 删库文件 → 重建）：直接用 SqlDriver 类型
+    implementation(libs.sqldelight.runtime)
 }

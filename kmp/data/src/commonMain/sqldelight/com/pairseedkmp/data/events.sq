@@ -14,6 +14,7 @@ CREATE TABLE events (
     status TEXT NOT NULL,                     -- PENDING_CONFIRMATION / IN_LIST / IN_PROGRESS / OCCURRED / REJECTED
     origin TEXT NOT NULL,                     -- SEED / SCHEDULED / PRESET
     source_seed_id INTEGER,                   -- 从哪颗种子长出来的（仅 origin = 'SEED' 时有值）
+    semi_fixed_template_code TEXT,            -- 半固定凭据：模板 code（仅 origin = 'SCHEDULED' 时有值）；"这一轮发生过没"按它查；其它来源为 NULL
     occurred_at INTEGER,                      -- 事件开始那一刻（Unix 毫秒）；未发生为 NULL
     duration_sec INTEGER NOT NULL,            -- 时长（生成时由步骤时长加总）
     expires_at INTEGER NOT NULL,              -- 过期时刻 = 生成时刻 + 7 天（Unix 毫秒）
@@ -21,3 +22,74 @@ CREATE TABLE events (
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
+
+-- ===== 命名查询（步骤 2：数据访问）=====
+
+-- 插入一条事件；id 交给库分配（INTEGER PRIMARY KEY = rowid 别名）
+insertEvent:
+INSERT INTO events (
+    pack_id, actor_id, target_id, scene_id, summary, steps, comparison_axes,
+    confirmation_payload, suitable_time, status, origin, source_seed_id,
+    semi_fixed_template_code, occurred_at, duration_sec, expires_at, is_deleted,
+    created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- 刚插入那一条的 id
+lastInsertedEventId:
+SELECT last_insert_rowid();
+
+selectEventById:
+SELECT * FROM events WHERE id = ?;
+
+-- 未完的事件：待确认 / 在清单 / 进行中（结算与触发只看这些）
+selectActiveEvents:
+SELECT * FROM events
+WHERE is_deleted = 0 AND status IN ('PENDING_CONFIRMATION', 'IN_LIST', 'IN_PROGRESS');
+
+selectEventsByStatus:
+SELECT * FROM events WHERE is_deleted = 0 AND status = ?;
+
+-- 状态推进到"进行中"，同时记 occurred_at
+markEventInProgress:
+UPDATE events SET status = 'IN_PROGRESS', occurred_at = ?, updated_at = ? WHERE id = ?;
+
+-- 其余状态推进（已发生等单改状态的动作；确认链路的改动走 updateEventStatusAndSuitableTime）
+updateEventStatus:
+UPDATE events SET status = ?, updated_at = ? WHERE id = ?;
+
+-- 过期到点 → 逻辑删除（数据留、不再显示）
+markEventExpired:
+UPDATE events SET is_deleted = 1, updated_at = ? WHERE id = ?;
+
+-- 轮窗口 [?, ?) 内该半固定模板是否已发生过：按 occurred_at 判（跨天自然成立）；不看 is_deleted（发生过就是发生过）
+countScheduledOccurrencesBetween:
+SELECT COUNT(*) FROM events
+WHERE origin = 'SCHEDULED' AND semi_fixed_template_code = ?
+  AND occurred_at >= ? AND occurred_at < ?;
+
+-- ===== 命名查询（步骤 3：结算核心）=====
+
+-- 上次事件结束时刻（结算算空闲起点用）：所有发生过的事件里最晚的"发生 + 时长"；一条都没有 → NULL
+-- 进行中的事件也算（其结束时刻在未来，但那时它在跑、空闲为 null，不矛盾）
+selectLastOccurredEnd:
+SELECT MAX(occurred_at + duration_sec * 1000) FROM events
+WHERE occurred_at IS NOT NULL;
+
+-- ===== 命名查询（步骤 5：一级确认）=====
+
+-- 确认答复落库：状态与可答时段一起改（答是 / 答否摘时段 / 改答回滚后落新答）
+updateEventStatusAndSuitableTime:
+UPDATE events SET status = ?, suitable_time = ?, updated_at = ? WHERE id = ?;
+
+-- 已发生 / 已拒的过期件：7 天后从历史页滚出（逻辑删除，数据留）——结算时一并处理
+selectCompletedPastExpiry:
+SELECT * FROM events
+WHERE is_deleted = 0 AND status IN ('OCCURRED', 'REJECTED') AND expires_at <= ?
+ORDER BY id;
+
+-- ===== 命名查询（步骤 6：调试壳）=====
+
+-- 未逻辑删除的全部事件（调试壳事件列表用；新的在前）
+selectVisibleEvents:
+SELECT * FROM events WHERE is_deleted = 0 ORDER BY id DESC;
