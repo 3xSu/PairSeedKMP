@@ -13,9 +13,13 @@ class SeedPicker(
     private val repository: SeedRepository,
     private val random: Random = Random.Default,
 ) {
-    /** 从池里挑一颗（池空 → null）；挑中即写计数，返回带新计数的种子。 */
-    fun pick(now: Long): IdeaSeed? {
-        val picked = weightedPick(repository.all(), random) ?: return null
+    /**
+     * 从池里挑一颗（池空 → null）；挑中即写计数，返回带新计数的种子。
+     * [exclude] = 本次生长已试过的种子（05 失败矩阵：每轮最多换固定几颗，换种子时不重挑同一颗）。
+     */
+    fun pick(now: Long, exclude: Set<Long> = emptySet()): IdeaSeed? {
+        val candidates = repository.all().filterNot { it.id in exclude }
+        val picked = weightedPick(candidates, random) ?: return null
         repository.recordPick(picked.id, now)
         return picked.copy(pickedCount = picked.pickedCount + 1, lastPickedAt = now, updatedAt = now)
     }

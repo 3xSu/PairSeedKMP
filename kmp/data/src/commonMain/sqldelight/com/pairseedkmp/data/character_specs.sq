@@ -26,3 +26,9 @@ CREATE TABLE character_specs (
     updated_at INTEGER NOT NULL,
     UNIQUE (character_id)                     -- 一角色一条（防重）
 );
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 某角色的设定卡（一角色一条；没有 → 无行）
+selectCharacterSpecByCharacterId:
+SELECT * FROM character_specs WHERE character_id = ?;

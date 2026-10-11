@@ -48,6 +48,7 @@ class RepositoriesTest {
         origin: EventOrigin = EventOrigin.SEED,
         semiFixedCode: String? = null,
         occurredAt: Long? = null,
+        afterEventId: Long? = null,
         suitableTime: List<Period> = listOf(Period.MORNING),
         expiresAt: Long = 1_791_072_000_000L + 7 * 86_400_000L,
     ) = Event(
@@ -66,6 +67,7 @@ class RepositoriesTest {
         status = status,
         origin = origin,
         sourceSeedId = null,
+        afterEventId = afterEventId,
         semiFixedTemplateCode = semiFixedCode,
         occurredAt = occurredAt,
         durationSec = 15,
@@ -249,6 +251,30 @@ class RepositoriesTest {
         val p = repo.current()!!
         assertEquals(999L, p.lastSeenAt)
         assertEquals(999L, p.updatedAt)
+    }
+
+    @Test
+    fun 接续指认_往返与空值() {
+        val repo = EventRepositoryImpl(db)
+        val target = repo.insert(sampleEvent())
+        val after = repo.insert(sampleEvent(afterEventId = target))
+
+        assertEquals(target, repo.byId(after)!!.afterEventId)
+        assertNull(repo.byId(target)!!.afterEventId, "没指认读回 null")
+    }
+
+    @Test
+    fun 最近已发生_倒序取数_按limit截断() {
+        val repo = EventRepositoryImpl(db)
+        val older = repo.insert(sampleEvent(status = EventStatus.OCCURRED, occurredAt = 1_000L))
+        val newest = repo.insert(sampleEvent(status = EventStatus.OCCURRED, occurredAt = 3_000L))
+        val middle = repo.insert(sampleEvent(status = EventStatus.OCCURRED, occurredAt = 2_000L))
+        repo.insert(sampleEvent(status = EventStatus.IN_LIST)) // 没发生不参与
+        val rolledOut = repo.insert(sampleEvent(status = EventStatus.OCCURRED, occurredAt = 4_000L))
+        repo.markExpired(rolledOut, updatedAt = 9_000L) // 逻辑删除不参与
+
+        assertEquals(listOf(newest, middle, older), repo.recentOccurred(limit = 10).map { it.id })
+        assertEquals(listOf(newest, middle), repo.recentOccurred(limit = 2).map { it.id }, "limit 截断保留最新的")
     }
 
     @Test

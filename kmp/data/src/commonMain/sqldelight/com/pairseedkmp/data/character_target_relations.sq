@@ -14,3 +14,11 @@ CREATE TABLE character_target_relations (
     updated_at INTEGER NOT NULL,
     UNIQUE (character_id, target_character_id) -- 一人对一人一条（防重）
 );
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 这两人各自对外的关系（有方向：甲对乙、乙对甲）；配套用，最多两行
+selectRelationsBetween:
+SELECT * FROM character_target_relations
+WHERE character_id IN (?, ?)
+ORDER BY id;

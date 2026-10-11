@@ -69,6 +69,39 @@ class EventTriggerTest {
         updatedAt = day,
     )
 
+    /** 刚结束（本次结算推进为已发生）的事件：[afterId] 指认清单里的某件（接续）。 */
+    private fun finishedEvent(
+        id: Long,
+        afterId: Long?,
+        occurredAt: Long,
+        durationSec: Int = 10,
+    ) = Event(
+        id = id,
+        packId = 7,
+        actorId = 3,
+        sceneId = 5,
+        summary = "刚做完的事",
+        steps = steps,
+        status = EventStatus.OCCURRED,
+        origin = EventOrigin.SEED,
+        afterEventId = afterId,
+        occurredAt = occurredAt,
+        durationSec = durationSec,
+        expiresAt = occurredAt + EVENT_EXPIRY_MILLIS,
+        createdAt = occurredAt,
+        updatedAt = occurredAt,
+    )
+
+    /** 带「刚结束」的结算结果：无在跑；空闲从结束时刻起算。 */
+    private fun finishedSettle(now: Long, finished: List<Event>, previousSeen: Long?) = SettleResult(
+        now = now,
+        finished = finished,
+        expired = emptyList(),
+        running = emptyList(),
+        idleSince = finished.maxOfOrNull { it.endsAt ?: it.updatedAt } ?: now,
+        previousLastSeenAt = previousSeen,
+    )
+
     private class Fixture(
         val events: FakeEventRepository,
         val trigger: EventTrigger,
@@ -279,6 +312,136 @@ class EventTriggerTest {
         assertNull(result.fired)
         assertTrue(f.events.all().none { it.origin == EventOrigin.SCHEDULED }) // 没有半固定发生
         assertEquals(EventStatus.IN_LIST, f.events.byId(1)!!.status) // 清单件也没被启动
+    }
+
+    // ===== ② 接续 =====
+
+    @Test
+    fun 接续_刚结束带指认_立即接上_不查时段() {
+        // B 只适合早晨，而现在是下午——「紧接着」优先，照接
+        val f = fixture(events = listOf(listEvent(id = 2, suitableTime = listOf(Period.MORNING), summary = "去拿快递")))
+        val now = at(hour = 14)
+        val result = f.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = now - 10_000)), previousSeen = now - 1_000),
+            0,
+            context(),
+        )
+
+        assertEquals(TriggerDecision.FIRED_CONTINUATION, result.decision)
+        val fired = result.fired!!
+        assertEquals(2L, fired.id)
+        assertEquals("去拿快递", fired.summary)
+        assertEquals(EventStatus.IN_PROGRESS, fired.status)
+        assertEquals(now, fired.occurredAt)
+        assertEquals(EventStatus.IN_PROGRESS, f.events.byId(2)!!.status, "清单件已开工")
+    }
+
+    @Test
+    fun 接续_让路补触发_结束后的检查点仍接() {
+        // meal 固定时刻 12:00 已过最晚；A 带着指认结束——① 先发，欠账留着
+        val f = fixture(
+            templates = listOf(template("meal", 12 * 60, 12 * 60)),
+            events = listOf(listEvent(id = 2, suitableTime = listOf(Period.MORNING), summary = "去拿快递")),
+        )
+        val now = at(hour = 13)
+        val first = f.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = now - 10_000)), previousSeen = now - 1_000),
+            0,
+            context(),
+        )
+        assertEquals(TriggerDecision.FIRED_SEMI_FIXED_OVERDUE, first.decision)
+        assertEquals("meal", first.fired!!.semiFixedTemplateCode)
+        assertEquals(EventStatus.IN_LIST, f.events.byId(2)!!.status, "让路①时不抢接")
+
+        // ① 的事件跑完后的第一个检查点（它自己不带指认，欠账不被覆盖）→ 接上
+        val meal = f.events.all().single { it.semiFixedTemplateCode == "meal" }
+        val now2 = now + 20_000
+        val second = f.trigger.check(
+            now2,
+            finishedSettle(now2, listOf(meal.copy(status = EventStatus.OCCURRED)), previousSeen = now2 - 1_000),
+            0,
+            context(),
+        )
+        assertEquals(TriggerDecision.FIRED_CONTINUATION, second.decision)
+        assertEquals(2L, second.fired!!.id)
+        assertEquals(EventStatus.IN_PROGRESS, f.events.byId(2)!!.status)
+    }
+
+    @Test
+    fun 接续_压过窗内半固定() {
+        val f = fixture(
+            templates = listOf(template("nap", 13 * 60, 15 * 60)), // 现在 14:00 窗内、due
+            events = listOf(listEvent(id = 2, suitableTime = listOf(Period.AFTERNOON), summary = "去拿快递")),
+        )
+        val now = at(hour = 14)
+        val result = f.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = now - 10_000)), previousSeen = now - 1_000),
+            0,
+            context(),
+        )
+
+        assertEquals(TriggerDecision.FIRED_CONTINUATION, result.decision)
+        assertEquals(2L, result.fired!!.id)
+        assertTrue(f.events.all().none { it.origin == EventOrigin.SCHEDULED }, "窗内半固定让路没发生")
+    }
+
+    @Test
+    fun 链断_离线跨过结束_不接_照常留清单() {
+        // A 上午 10 点结束（指认 B）；上次在场 09:00——离线跨过结束 → 链断
+        val f = fixture(events = listOf(listEvent(id = 2, suitableTime = listOf(Period.MORNING), summary = "去拿快递")))
+        val now = at(hour = 14)
+        val result = f.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = at(hour = 10), durationSec = 10)), previousSeen = at(hour = 9)),
+            0,
+            context(),
+        )
+        assertNull(result.fired)
+        assertEquals(EventStatus.IN_LIST, f.events.byId(2)!!.status, "链断不接，那件照常走 ④")
+
+        // 从没在场过（首启）同理：不接
+        val g = fixture(events = listOf(listEvent(id = 2, suitableTime = listOf(Period.MORNING), summary = "去拿快递")))
+        val firstLaunch = g.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = now - 10_000)), previousSeen = null),
+            0,
+            context(),
+        )
+        assertNull(firstLaunch.fired)
+        assertEquals(EventStatus.IN_LIST, g.events.byId(2)!!.status)
+    }
+
+    @Test
+    fun 指认件被做掉_清欠不接_之后也不再接() {
+        val f = fixture(
+            templates = listOf(template("meal", 12 * 60, 12 * 60)),
+            events = listOf(listEvent(id = 2, suitableTime = listOf(Period.MORNING), summary = "去拿快递")),
+        )
+        val now = at(hour = 13)
+        // ① 先发，欠账（指认 B）留着
+        f.trigger.check(
+            now,
+            finishedSettle(now, listOf(finishedEvent(id = 9, afterId = 2, occurredAt = now - 10_000)), previousSeen = now - 1_000),
+            0,
+            context(),
+        )
+        // 中途 B 被摘掉（拒掉）
+        f.events.updateStatus(2, EventStatus.REJECTED, updatedAt = now)
+
+        // 下一个检查点：② 消费欠账时发现 B 不在清单 → 清欠、回空闲
+        val now2 = now + 20_000
+        val second = f.trigger.check(now2, idleSettle(now2, idleSince = now2, previousSeen = now2 - 1_000), 0, context())
+        assertNull(second.fired)
+        assertEquals(TriggerDecision.IDLE_BELOW_THRESHOLD, second.decision)
+
+        // B 回到清单也不再接（欠账已清，不粘）
+        f.events.updateStatus(2, EventStatus.IN_LIST, updatedAt = now2)
+        val third = f.trigger.check(now2 + 1_000, idleSettle(now2 + 1_000, idleSince = now2 + 1_000, previousSeen = now2), 0, context())
+        assertNull(third.fired)
+        assertEquals(EventStatus.IN_LIST, f.events.byId(2)!!.status)
     }
 
     // ===== 没有角色组 =====

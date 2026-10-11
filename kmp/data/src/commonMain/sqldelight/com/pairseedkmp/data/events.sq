@@ -8,12 +8,13 @@ CREATE TABLE events (
     scene_id INTEGER NOT NULL,                -- 在哪个场景（现在恒为"家"）
     summary TEXT NOT NULL,                    -- 一句话概要；历史页显示它，判定和查重也吃它
     steps TEXT NOT NULL,                      -- 步骤序列 JSON：[{ "action": 基础动作 code, "params": {…} }]；params 随动作定（「说」= speaker / text / duration_sec）
-    comparison_axes TEXT,                     -- 事件三维 JSON：physical_intimacy / verbal_directness / emotion_visibility（0-100）；不走判定的事件（如半固定）为 NULL
+    comparison_axes TEXT,                     -- 事件客观属性 JSON：verbal_directness / emotion_visibility（1-4 档；verbal 缺失 = 整件事没人说话）；物理维不在这里（码表从动作码推）；不走判定的事件（如半固定）为 NULL
     confirmation_payload TEXT,                -- 确认弹框要显示的东西（AI 的疑问等）；非待确认事件为 NULL；内部结构随确认链路定稿
     suitable_time TEXT,                       -- 合适时段，半角逗号分隔多值（MORNING,EVENING）；半固定事件发生才落表、无此概念 → NULL
     status TEXT NOT NULL,                     -- PENDING_CONFIRMATION / IN_LIST / IN_PROGRESS / OCCURRED / REJECTED
     origin TEXT NOT NULL,                     -- SEED / SCHEDULED / PRESET
     source_seed_id INTEGER,                   -- 从哪颗种子长出来的（仅 origin = 'SEED' 时有值）
+    after_event_id INTEGER,                   -- 接续指认（05）：这条做完后紧接着想做的那件（清单里的另一条事件 id）；NULL = 无
     semi_fixed_template_code TEXT,            -- 半固定凭据：模板 code（仅 origin = 'SCHEDULED' 时有值）；"这一轮发生过没"按它查；其它来源为 NULL
     occurred_at INTEGER,                      -- 事件开始那一刻（Unix 毫秒）；未发生为 NULL
     duration_sec INTEGER NOT NULL,            -- 时长（生成时由步骤时长加总）
@@ -30,10 +31,10 @@ insertEvent:
 INSERT INTO events (
     pack_id, actor_id, target_id, scene_id, summary, steps, comparison_axes,
     confirmation_payload, suitable_time, status, origin, source_seed_id,
-    semi_fixed_template_code, occurred_at, duration_sec, expires_at, is_deleted,
-    created_at, updated_at
+    after_event_id, semi_fixed_template_code, occurred_at, duration_sec, expires_at,
+    is_deleted, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- 刚插入那一条的 id
 lastInsertedEventId:
@@ -48,7 +49,7 @@ SELECT * FROM events
 WHERE is_deleted = 0 AND status IN ('PENDING_CONFIRMATION', 'IN_LIST', 'IN_PROGRESS');
 
 selectEventsByStatus:
-SELECT * FROM events WHERE is_deleted = 0 AND status = ?;
+SELECT * FROM events WHERE is_deleted = 0 AND status = ? ORDER BY id;
 
 -- 状态推进到"进行中"，同时记 occurred_at
 markEventInProgress:
@@ -93,3 +94,13 @@ ORDER BY id;
 -- 未逻辑删除的全部事件（调试壳事件列表用；新的在前）
 selectVisibleEvents:
 SELECT * FROM events WHERE is_deleted = 0 ORDER BY id DESC;
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 最近已发生的事件（生成上下文的「近期已发生」用；新的在前；同刻比 id）
+-- 不加 occurred_at IS NOT NULL：SQLDelight 会因此把 occurred_at 推成非空、生成独立结果类（不再是 Events）
+selectRecentOccurred:
+SELECT * FROM events
+WHERE is_deleted = 0 AND status = 'OCCURRED'
+ORDER BY occurred_at DESC, id DESC
+LIMIT ?;

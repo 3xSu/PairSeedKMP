@@ -25,7 +25,7 @@ data class SemiFixedFireContext(val actorId: Long, val targetId: Long? = null, v
  * 在结算检查点调 [check]，按序问：
  * ① 过最晚的 due（窗口已关、这轮没发生过）→ 立即发生（多个 due 按最晚点早者先）；
  *   例外：整段落在离线空白里的窗口翻篇、不补
- * ② 接续——结构留（无数据源）
+ * ② 接续——刚结束的事件带指认、被指认件仍在清单 → 立即接上（让路①后仍接；不查 suitable_time）
  * ③ 窗口开着且这轮没发生过 → 发生它
  * ④ 空闲 ≥ [idleThresholdMillis] → 清单挑一件（`suitable_time` 含当前时段；空 → 继续空闲）
  * 有事件在跑 → 不打断（"当前这件事完成后立马触发"落在下一个检查点，无需定时器）。
@@ -45,10 +45,16 @@ class EventTrigger(
      */
     private val resolvedRounds = mutableSetOf<String>()
 
+    /** 接续欠账：被指认件还欠着一次「紧接着」的接续（② 消费）；让路①时留着不丢（「让路后仍接」）。 */
+    private var pendingContinuationId: Long? = null
+
     fun check(now: Long, settle: SettleResult, utcOffsetSeconds: Int, context: SemiFixedFireContext): TriggerResult {
         if (settle.running.isNotEmpty()) {
             return TriggerResult(fired = null, decision = TriggerDecision.BLOCKED_BY_RUNNING)
         }
+
+        // 先记欠账再走 ①——① 抢发时欠账留着，等它跑完的下一个检查点接（「让路后仍接」）
+        noteContinuation(settle, now)
 
         val semiFixed = planSemiFixed(
             statuses = loadRoundStatuses(now, utcOffsetSeconds),
@@ -59,13 +65,27 @@ class EventTrigger(
         semiFixed.swallowed.forEach { resolvedRounds += it.key }
         val swallowedCodes = semiFixed.swallowed.map { it.template.templateCode }
 
-        val pick = semiFixed.fire
-        if (pick != null) {
-            resolvedRounds += pick.status.key
+        // ① 过最晚的 due：立即发生
+        semiFixed.overdue?.let { status ->
+            resolvedRounds += status.key
             return TriggerResult(
-                fired = fireSemiFixed(pick.status.template, now, context),
-                decision = if (pick.overdue) TriggerDecision.FIRED_SEMI_FIXED_OVERDUE
-                else TriggerDecision.FIRED_SEMI_FIXED_IN_WINDOW,
+                fired = fireSemiFixed(status.template, now, context),
+                decision = TriggerDecision.FIRED_SEMI_FIXED_OVERDUE,
+                swallowedOffline = swallowedCodes,
+            )
+        }
+
+        // ② 接续：① 之后、③ 之前（压过窗内半固定；不查 suitable_time——「紧接着」优先）
+        fireContinuation(now)?.let { event ->
+            return TriggerResult(event, TriggerDecision.FIRED_CONTINUATION, swallowedCodes)
+        }
+
+        // ③ 窗口开着且这轮没发生过：发生它
+        semiFixed.window?.let { status ->
+            resolvedRounds += status.key
+            return TriggerResult(
+                fired = fireSemiFixed(status.template, now, context),
+                decision = TriggerDecision.FIRED_SEMI_FIXED_IN_WINDOW,
                 swallowedOffline = swallowedCodes,
             )
         }
@@ -83,6 +103,37 @@ class EventTrigger(
             decision = TriggerDecision.FIRED_FROM_LIST,
             swallowedOffline = swallowedCodes,
         )
+    }
+
+    /**
+     * 观察结算、记欠账：最近结束的一条带接续指认、且不是在离线空白里结束的
+     * → 记下被指认件（② 的下一次机会消费）。最新一条没带指认 → 不动已有欠账。
+     */
+    private fun noteContinuation(settle: SettleResult, now: Long) {
+        if (pendingContinuationId != null) return
+        val finished = settle.finished.maxByOrNull { it.endsAt ?: it.updatedAt } ?: return
+        val afterId = finished.afterEventId ?: return
+        val endsAt = finished.endsAt ?: return
+        // 链断 = 离线跨过这条结束（沿用「连续在场」1 分钟判据）：不立即接，那件照常留清单等④
+        val previousSeen = settle.previousLastSeenAt
+        val offlineThroughEnd = previousSeen == null ||
+            (now - previousSeen > CONTINUOUS_CHECKPOINT_GAP_MILLIS && previousSeen < endsAt)
+        if (offlineThroughEnd) return
+        pendingContinuationId = afterId
+    }
+
+    /**
+     * ② 兑现欠账：被指认件仍 IN_LIST → 立即开工（不查 suitable_time——「紧接着」优先）；
+     * 已被做掉 / 不在清单（含过期滚出）→ 清欠、回空闲。
+     */
+    private fun fireContinuation(now: Long): Event? {
+        val targetId = pendingContinuationId ?: return null
+        pendingContinuationId = null
+        val target = eventRepository.activeEvents()
+            .firstOrNull { it.id == targetId && it.status == EventStatus.IN_LIST }
+            ?: return null
+        eventRepository.markInProgress(target.id, occurredAt = now, updatedAt = now)
+        return target.copy(status = EventStatus.IN_PROGRESS, occurredAt = now, updatedAt = now)
     }
 
     private fun loadRoundStatuses(now: Long, utcOffsetSeconds: Int): List<SemiFixedRoundStatus> {
@@ -150,6 +201,9 @@ enum class TriggerDecision {
     /** ① 过最晚的 due：立即发生（补触发 / 当前事件结束后的第一个检查点）。 */
     FIRED_SEMI_FIXED_OVERDUE,
 
+    /** ② 接续：刚结束的指认兑现——被指认件立即开工。 */
+    FIRED_CONTINUATION,
+
     /** ③ 窗口开着且 due：发生。 */
     FIRED_SEMI_FIXED_IN_WINDOW,
 
@@ -179,15 +233,15 @@ internal data class SemiFixedRoundStatus(
 internal data class SemiFixedPlan(
     /** 翻篇（整段离线、不补）的轮。 */
     val swallowed: List<SemiFixedRoundStatus>,
-    val fire: SemiFixedFirePick?,
+    /** ① 补触发（窗口已关且 due）：最晚点早者先。 */
+    val overdue: SemiFixedRoundStatus?,
+    /** ③ 窗内（窗口开着且 due）：最晚点早者先。 */
+    val window: SemiFixedRoundStatus?,
 )
 
-internal data class SemiFixedFirePick(val status: SemiFixedRoundStatus, val overdue: Boolean)
-
 /**
- * 触发链的 ①②③（④ 在 [EventTrigger.check] 里）——纯决策：
+ * 触发链的 ①③（② 接续与 ④ 在 [EventTrigger.check] 里——② 插在①③之间）——纯决策：
  * ① 窗口已关且 due：按最晚点早者先补发生；整段落在离线空白里的翻篇、不补
- * ② 接续：结构留（无数据源）
  * ③ 窗口开着且 due：按最晚点早者先发生
  */
 internal fun planSemiFixed(
@@ -208,12 +262,9 @@ internal fun planSemiFixed(
     }
     // ① 过最晚：最晚点早者先
     overdue.sortedBy { it.round.endMillis }.firstOrNull()?.let {
-        return SemiFixedPlan(swallowed, SemiFixedFirePick(it, overdue = true))
+        return SemiFixedPlan(swallowed, overdue = it, window = null)
     }
-    // ② 接续（结构留，无数据源）——窗内半固定要让接续先抢，将来插这里
-    // ③ 窗内：最晚点早者先
-    pending.filter { it.windowOpen }.sortedBy { it.round.endMillis }.firstOrNull()?.let {
-        return SemiFixedPlan(swallowed, SemiFixedFirePick(it, overdue = false))
-    }
-    return SemiFixedPlan(swallowed, null)
+    // ③ 窗内：最晚点早者先（② 接续由调用方插在两者之间）
+    val windowPick = pending.filter { it.windowOpen }.sortedBy { it.round.endMillis }.firstOrNull()
+    return SemiFixedPlan(swallowed, overdue = null, window = windowPick)
 }

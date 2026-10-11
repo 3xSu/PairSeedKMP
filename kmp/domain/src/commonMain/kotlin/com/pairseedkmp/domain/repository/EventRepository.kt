@@ -35,6 +35,9 @@ interface EventRepository {
     /** 已发生 / 已拒的过期件（结算"滚出历史页"用；按 id 升序）。 */
     fun completedPastExpiry(now: Long): List<Event>
 
+    /** 最近已发生事件的概要（05 生成上下文的「近期已发生」；按 occurred_at 倒序取 ≤[limit] 条）。 */
+    fun recentOccurred(limit: Int): List<Event>
+
     /** 未逻辑删除的全部事件，新的在前（调试壳事件列表用）。 */
     fun visibleEvents(): List<Event>
 }

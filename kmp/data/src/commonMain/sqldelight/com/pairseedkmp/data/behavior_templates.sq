@@ -40,3 +40,9 @@ INSERT OR IGNORE INTO behavior_templates (
     duration_seconds, limbs, sort_order, created_at, updated_at
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 全部动作（生成上下文的动作库：AI 只挑不编；按 sort_order）
+selectAllBehaviors:
+SELECT * FROM behavior_templates WHERE is_deleted = 0 ORDER BY sort_order, id;

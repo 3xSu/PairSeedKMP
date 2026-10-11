@@ -18,3 +18,12 @@ CREATE TABLE document_snippets (
     updated_at INTEGER NOT NULL,
     UNIQUE (doc_code)                         -- 文档编码唯一（防重）
 );
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 某组某类文档片段（参考素材：喂生成提示词用；按 id 取前几条）
+selectDocumentSnippetsByPackAndType:
+SELECT * FROM document_snippets
+WHERE pack_code = ? AND doc_type = ? AND is_deleted = 0
+ORDER BY id
+LIMIT ?;

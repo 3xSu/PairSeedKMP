@@ -69,6 +69,11 @@ class FakeEventRepository(initial: List<Event> = emptyList()) : EventRepository 
     override fun lastOccurredEndMillis(): Long? =
         stored.filter { it.occurredAt != null }.maxOfOrNull { it.endsAt!! }
 
+    override fun recentOccurred(limit: Int): List<Event> =
+        stored.filter { it.status == EventStatus.OCCURRED && it.occurredAt != null }
+            .sortedByDescending { it.occurredAt!! }
+            .take(limit)
+
     override fun visibleEvents(): List<Event> =
         stored.filter { !it.isDeleted }.sortedByDescending { it.id }
 

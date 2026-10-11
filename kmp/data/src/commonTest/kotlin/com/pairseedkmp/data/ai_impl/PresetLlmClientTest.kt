@@ -4,6 +4,7 @@ import com.pairseedkmp.domain.ai.LlmJson
 import com.pairseedkmp.domain.ai.LlmRequest
 import com.pairseedkmp.domain.ai.LlmTask
 import com.pairseedkmp.domain.common.Period
+import com.pairseedkmp.domain.event.tagStageSchema
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -18,12 +19,13 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-private fun request(task: LlmTask) = LlmRequest(
+private fun request(task: LlmTask, responseSchema: String? = null) = LlmRequest(
     system = "设定",
     user = "任务输入",
     temperature = 0.9,
     expectJson = true,
     task = task,
+    responseSchema = responseSchema,
 )
 
 private fun parse(text: String): JsonObject =
@@ -36,7 +38,8 @@ class PresetLlmClientTest {
         val client = PresetLlmClient()
         for (task in LlmTask.entries) {
             repeat(4) { round -> // 覆盖轮转一整圈
-                val text = client.complete(request(task)).text
+                val schema = if (task == LlmTask.EVENT_TAG) tagStageSchema(round % 2 == 0) else null
+                val text = client.complete(request(task, schema)).text
                 assertNotNull(LlmJson.parse(text), "task=$task 第 ${round + 1} 条解析失败：$text")
             }
         }
@@ -57,21 +60,6 @@ class PresetLlmClientTest {
                 val code = step.jsonObject.getValue("action").jsonPrimitive.content
                 assertTrue(code in allowed, "动作码不在闭集：$code")
             }
-
-            // 三维：physical_intimacy / emotion_visibility 必给 0-100；verbal_directness 可空
-            val axes = root.getValue("comparison_axes").jsonObject
-            for (key in listOf("physical_intimacy", "emotion_visibility")) {
-                assertTrue(axes.getValue(key).jsonPrimitive.int in 0..100, "$key 越界")
-            }
-            val directness = axes["verbal_directness"]
-            if (directness != null && directness != JsonNull) {
-                assertTrue(directness.jsonPrimitive.int in 0..100, "verbal_directness 越界")
-            }
-
-            // 时段码 ∈ 四时段
-            val periods = root.getValue("suitable_time").jsonArray
-            assertTrue(periods.isNotEmpty(), "suitable_time 不应为空（预设样例都给得出时段）")
-            for (p in periods) Period.fromCode(p.jsonPrimitive.content)
         }
         assertEquals(3, summaries.size, "轮转应产出 3 条不同内容")
     }
@@ -107,6 +95,32 @@ class PresetLlmClientTest {
         }
         assertTrue(afters.any { it != null && it != JsonNull }, "应有一条带接续指认的样例")
         assertTrue(afters.any { it == null }, "应有无接续的样例（清单空时也能过校验）")
+    }
+
+    @Test
+    fun 打标段预设_按固化schema给verbal_含台词档位_无台词null() = runTest {
+        val client = PresetLlmClient()
+        val speechVerbal = mutableSetOf<Int>()
+        repeat(4) { round ->
+            val root = parse(client.complete(request(LlmTask.EVENT_TAG, tagStageSchema(hasSpeech = true))).text)
+            val axes = root.getValue("comparison_axes").jsonObject
+            val verbal = axes.getValue("verbal_directness").jsonPrimitive.int
+            assertTrue(verbal in 1..4, "有台词时 verbal 应在 1-4：$verbal（第 ${round + 1} 条）")
+            speechVerbal += verbal
+            val emotion = axes.getValue("emotion_visibility").jsonPrimitive.int
+            assertTrue(emotion in 1..4, "emotion 应在 1-4：$emotion")
+            for (p in root.getValue("suitable_time").jsonArray) {
+                Period.fromCode(p.jsonPrimitive.content) // 时段码合法（含空数组）
+            }
+        }
+        assertTrue(speechVerbal.size > 1, "verbal 应随轮转变化：$speechVerbal")
+
+        val silent = parse(client.complete(request(LlmTask.EVENT_TAG, tagStageSchema(hasSpeech = false))).text)
+        assertEquals(
+            JsonNull,
+            silent.getValue("comparison_axes").jsonObject.getValue("verbal_directness"),
+            "无台词时固化 schema 只放行 null",
+        )
     }
 
     @Test

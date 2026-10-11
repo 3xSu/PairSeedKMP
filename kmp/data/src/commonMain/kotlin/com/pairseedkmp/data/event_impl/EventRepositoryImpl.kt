@@ -28,6 +28,7 @@ class EventRepositoryImpl(private val database: PairSeedDatabase) : EventReposit
             status = event.status.code,
             origin = event.origin.code,
             source_seed_id = event.sourceSeedId,
+            after_event_id = event.afterEventId,
             semi_fixed_template_code = event.semiFixedTemplateCode,
             occurred_at = event.occurredAt,
             duration_sec = event.durationSec.toLong(),
@@ -72,6 +73,9 @@ class EventRepositoryImpl(private val database: PairSeedDatabase) : EventReposit
 
     override fun visibleEvents(): List<Event> =
         queries.selectVisibleEvents().executeAsList().map { it.toDomain() }
+
+    override fun recentOccurred(limit: Int): List<Event> =
+        queries.selectRecentOccurred(limit.toLong()).executeAsList().map { it.toDomain() }
 
     override fun markExpired(id: Long, updatedAt: Long) {
         queries.markEventExpired(updated_at = updatedAt, id = id)

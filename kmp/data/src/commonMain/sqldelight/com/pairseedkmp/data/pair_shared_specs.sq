@@ -19,3 +19,9 @@ VALUES (?, ?, ?, ?, ?, ?);
 
 lastInsertedPairSharedSpecId:
 SELECT last_insert_rowid();
+
+-- ===== 命名查询（节点 05：事件生长）=====
+
+-- 某角色组的共享设定（一对一条；没有 → 无行）
+selectPairSharedSpecByPackId:
+SELECT * FROM pair_shared_specs WHERE pack_id = ?;

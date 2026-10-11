@@ -27,6 +27,8 @@ data class Event(
     val status: EventStatus,
     val origin: EventOrigin,
     val sourceSeedId: Long? = null,
+    /** 接续指认：这条做完后紧接着想做的那件（清单里的另一条）；null = 无。 */
+    val afterEventId: Long? = null,
     /** 半固定凭据（仅 origin=SCHEDULED 有值）；列随步骤 2 落库。 */
     val semiFixedTemplateCode: String? = null,
     /** 事件开始那一刻（进历史的时间）；未发生 = null。 */

@@ -238,6 +238,7 @@ internal fun EventOrigin.label(): String = when (this) {
 internal fun TriggerDecision.label(): String = when (this) {
     TriggerDecision.BLOCKED_BY_RUNNING -> "有事件在跑：不打断"
     TriggerDecision.FIRED_SEMI_FIXED_OVERDUE -> "半固定·过最晚：补发"
+    TriggerDecision.FIRED_CONTINUATION -> "接续：刚结束的指认兑现"
     TriggerDecision.FIRED_SEMI_FIXED_IN_WINDOW -> "半固定·窗口内：发生"
     TriggerDecision.FIRED_FROM_LIST -> "空闲挑清单：发生"
     TriggerDecision.IDLE_BELOW_THRESHOLD -> "空闲没到阈值：继续攒"

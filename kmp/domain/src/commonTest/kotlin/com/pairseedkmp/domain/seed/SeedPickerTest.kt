@@ -81,4 +81,22 @@ class SeedPickerTest {
         assertTrue(counts.getValue(1) > 0, "被挑过 100 次仍会被抽中（1/101 权重）：$counts")
         assertTrue(counts.getValue(2) > counts.getValue(1))
     }
+
+    @Test
+    fun exclude_不重挑同颗() {
+        val repo = FakeSeedRepository(listOf(seed(1), seed(2)))
+        val picked = SeedPicker(repo, Random(7)).pick(now = 100L, exclude = setOf(1L))
+
+        assertEquals(2L, picked!!.id, "被排除的 1 不参与（05 换种子）")
+        val byId = repo.stored().associateBy { it.id }
+        assertEquals(0, byId.getValue(1).pickedCount, "排除的不记账")
+        assertEquals(1, byId.getValue(2).pickedCount)
+    }
+
+    @Test
+    fun 全被排除_不挑不记账() {
+        val repo = FakeSeedRepository(listOf(seed(1)))
+        assertNull(SeedPicker(repo, Random(1)).pick(now = 100L, exclude = setOf(1L)))
+        assertEquals(0, repo.stored().single().pickedCount)
+    }
 }

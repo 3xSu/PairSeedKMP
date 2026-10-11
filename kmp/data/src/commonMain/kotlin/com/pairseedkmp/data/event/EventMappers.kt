@@ -29,6 +29,7 @@ internal fun Events.toDomain(): Event = Event(
     status = EventStatus.fromCode(status),
     origin = EventOrigin.fromCode(origin),
     sourceSeedId = source_seed_id,
+    afterEventId = after_event_id,
     semiFixedTemplateCode = semi_fixed_template_code,
     occurredAt = occurred_at,
     durationSec = duration_sec.toInt(),

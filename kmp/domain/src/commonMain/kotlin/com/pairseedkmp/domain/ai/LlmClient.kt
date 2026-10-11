@@ -10,19 +10,28 @@ interface LlmClient {
     suspend fun complete(request: LlmRequest): LlmResponse
 }
 
-/** 调用请求：提示词两段 + 采样温度 + 是否期望 JSON + 任务标签。 */
+/**
+ * 调用请求：提示词两段 + 采样温度 + 是否期望 JSON + 任务标签。
+ * [responseSchema] = 输出结构约束（JSON Schema 串）：支持约束解码的 provider（端侧）用它钉死输出结构
+ * （05 打标段「事实固化」：`verbal_directness` 的可空性按「说」步有无固化进 schema）；
+ * 不支持的原样忽略（预设用它模拟约束；API 映射暂不带）。
+ */
 data class LlmRequest(
     val system: String,
     val user: String,
     val temperature: Double,
     val expectJson: Boolean,
     val task: LlmTask,
+    val responseSchema: String? = null,
 )
 
 /** 任务标签：谁在调（预设按它返回内置响应；日志按它区分链路）。 */
 enum class LlmTask {
-    /** 05：事件生成。 */
+    /** 05：事件生成（A1 生成段）。 */
     EVENT_GROW,
+
+    /** 05：事件打标（A2 打标段——读 digest 出两维档位 + 适合时段）。 */
+    EVENT_TAG,
 
     /** 06：OOC 判定。 */
     JUDGE,
