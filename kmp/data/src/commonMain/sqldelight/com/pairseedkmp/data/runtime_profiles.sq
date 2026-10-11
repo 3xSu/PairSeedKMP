@@ -27,3 +27,6 @@ SELECT last_insert_rowid();
 
 updateRuntimeProfileHeartbeat:
 UPDATE runtime_profiles SET last_seen_at = ?, updated_at = ? WHERE id = ?;
+
+updateApiKeyConfigured:
+UPDATE runtime_profiles SET api_key_configured = ?, updated_at = ? WHERE id = ?;

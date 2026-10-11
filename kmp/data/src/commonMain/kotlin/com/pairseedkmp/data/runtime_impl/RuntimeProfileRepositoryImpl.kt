@@ -29,4 +29,12 @@ class RuntimeProfileRepositoryImpl(private val database: PairSeedDatabase) : Run
     override fun heartbeat(id: Long, now: Long) {
         queries.updateRuntimeProfileHeartbeat(last_seen_at = now, updated_at = now, id = id)
     }
+
+    override fun setApiKeyConfigured(id: Long, configured: Boolean, now: Long) {
+        queries.updateApiKeyConfigured(
+            api_key_configured = if (configured) 1L else 0L,
+            updated_at = now,
+            id = id,
+        )
+    }
 }

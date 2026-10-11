@@ -12,4 +12,7 @@ interface RuntimeProfileRepository {
 
     /** 存活心跳：结算时更新 `last_seen_at`（供"窗口是否整段落在离线空白里"判定）。 */
     fun heartbeat(id: Long, now: Long)
+
+    /** 镜像位：API Key 配置状态（Key 本体只存壳层 Keystore 密文，不落库 / 不进日志；01）。 */
+    fun setApiKeyConfigured(id: Long, configured: Boolean, now: Long)
 }

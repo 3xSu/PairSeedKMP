@@ -28,9 +28,13 @@ kotlin {
             // 领域层依赖从这里加
             // api：EventStep.params 是 JsonObject，属公开模型的一部分
             api(libs.kotlinx.serialization.json)
+            // 端口是 suspend 函数（异步口径，2026-10-06：官方 KMP 库、非框架 / 平台依赖；iOS 就绪）
+            implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest 虚拟时间（LlmCaller 重试 / 超时测试不用真等）
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

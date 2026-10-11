@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
@@ -31,8 +33,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_1_8)
     }
 }
 
@@ -43,4 +48,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     // 壳层管 driver 生命周期（清空数据重来要关驱动 → 删库文件 → 重建）：直接用 SqlDriver 类型
     implementation(libs.sqldelight.runtime)
+    // 壳层两个 store（01：Keystore / prefs 读写挪 IO 线程）
+    implementation(libs.kotlinx.coroutines.core)
+    // 节点 02 spike：端侧模型验证页（仅 debug 变体）
+    debugImplementation(libs.litertlm.android)
 }

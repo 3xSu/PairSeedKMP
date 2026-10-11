@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 节点 02 spike：端侧模型验证页，仅 debug 变体打进包 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="com.pairseedkmp.android.spike.OnDeviceSpikeActivity"
+            android:exported="true"
+            android:label="端侧验证"
+            android:screenOrientation="portrait" />
+    </application>
+</manifest>

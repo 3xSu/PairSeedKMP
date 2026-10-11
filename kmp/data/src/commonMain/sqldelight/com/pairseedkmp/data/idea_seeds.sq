@@ -16,3 +16,28 @@ CREATE TABLE idea_seeds (
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
+
+-- ===== 命名查询（04：种子池）=====
+
+selectSeeds:
+SELECT * FROM idea_seeds WHERE is_deleted = 0 ORDER BY id;
+
+-- 前缀 / 同字搜索（防重复输入用）：包含匹配；instr 不做通配符解释（用户输入的 % _ 按字面算）
+searchSeedsByKeyword:
+SELECT * FROM idea_seeds WHERE is_deleted = 0 AND instr(keyword, :fragment) > 0 ORDER BY id;
+
+insertSeed:
+INSERT INTO idea_seeds (
+    keyword, theme, scene_hint_tags, suggested_time_window, relationship_push_target,
+    novelty_target, source_type, quality_score, picked_count, last_picked_at,
+    is_deleted, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, ?, ?);
+
+lastInsertedSeedId:
+SELECT last_insert_rowid();
+
+recordSeedPick:
+UPDATE idea_seeds
+SET picked_count = picked_count + 1, last_picked_at = :pickedAt, updated_at = :pickedAt
+WHERE id = :id;

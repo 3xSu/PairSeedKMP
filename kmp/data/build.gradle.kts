@@ -29,6 +29,10 @@ kotlin {
             implementation(libs.sqldelight.runtime)
             // 领域端口与模型（依赖方向：data → domain）
             implementation(projects.kmp.domain)
+            // LLM 调用（01）：Ktor + CIO 引擎（跨平台，iOS 就绪）；协程随端口 suspend 口径
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
         }
         androidMain.dependencies {
             // Android 建库驱动（步骤 4）；iOS 驱动留到做 iOS 时补
@@ -41,6 +45,10 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest 虚拟时间（预设 / API client 单测都在 suspend 面上）
+            implementation(libs.kotlinx.coroutines.test)
+            // MockEngine（01：API client 请求形状 / 错误映射测试）
+            implementation(libs.ktor.client.mock)
         }
     }
 }

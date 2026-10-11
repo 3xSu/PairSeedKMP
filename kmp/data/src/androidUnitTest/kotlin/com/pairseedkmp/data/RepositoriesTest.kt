@@ -250,4 +250,19 @@ class RepositoriesTest {
         assertEquals(999L, p.lastSeenAt)
         assertEquals(999L, p.updatedAt)
     }
+
+    @Test
+    fun 运行配置_API_Key镜像位_写入与回读() {
+        val repo = RuntimeProfileRepositoryImpl(db)
+        val id = repo.insert(RuntimeProfile(id = 0, createdAt = 100L, updatedAt = 100L))
+        assertFalse(repo.current()!!.apiKeyConfigured, "默认未配置")
+
+        repo.setApiKeyConfigured(id, configured = true, now = 200L)
+        val configured = repo.current()!!
+        assertTrue(configured.apiKeyConfigured, "配置后镜像位应为 1")
+        assertEquals(200L, configured.updatedAt)
+
+        repo.setApiKeyConfigured(id, configured = false, now = 300L)
+        assertFalse(repo.current()!!.apiKeyConfigured, "清掉 Key 后镜像位回落")
+    }
 }

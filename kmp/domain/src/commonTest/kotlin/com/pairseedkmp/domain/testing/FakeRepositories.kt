@@ -8,9 +8,11 @@ import com.pairseedkmp.domain.event.SemiFixedEventTemplate
 import com.pairseedkmp.domain.event.UserConfirmation
 import com.pairseedkmp.domain.repository.EventRepository
 import com.pairseedkmp.domain.repository.RuntimeProfileRepository
+import com.pairseedkmp.domain.repository.SeedRepository
 import com.pairseedkmp.domain.repository.SemiFixedTemplateRepository
 import com.pairseedkmp.domain.repository.UserConfirmationRepository
 import com.pairseedkmp.domain.runtime.RuntimeProfile
+import com.pairseedkmp.domain.seed.IdeaSeed
 
 /** 内存版事件仓储（commonTest 用；行为对齐 [EventRepository] 契约，同 data 层的 SQLDelight 实现）。 */
 class FakeEventRepository(initial: List<Event> = emptyList()) : EventRepository {
@@ -124,6 +126,10 @@ class FakeRuntimeProfileRepository(initial: RuntimeProfile? = null) : RuntimePro
     override fun heartbeat(id: Long, now: Long) {
         stored = stored?.takeIf { it.id == id }?.copy(lastSeenAt = now, updatedAt = now)
     }
+
+    override fun setApiKeyConfigured(id: Long, configured: Boolean, now: Long) {
+        stored = stored?.takeIf { it.id == id }?.copy(apiKeyConfigured = configured, updatedAt = now)
+    }
 }
 
 /** 内存版半固定模板仓储。 */
@@ -144,5 +150,34 @@ class FakeSemiFixedTemplateRepository(
         val id = nextId++
         stored += template.copy(id = id)
         return id
+    }
+}
+
+/** 内存版种子仓储（行为对齐 [SeedRepository] 契约，同 data 层的 SQLDelight 实现）。 */
+class FakeSeedRepository(initial: List<IdeaSeed> = emptyList()) : SeedRepository {
+
+    private val stored = initial.toMutableList()
+    private var nextId = (initial.maxOfOrNull { it.id } ?: 0L) + 1L
+
+    /** 读一眼当前存储（含逻辑删除；测试断言用）。 */
+    fun stored(): List<IdeaSeed> = stored.toList()
+
+    override fun all(): List<IdeaSeed> = stored.filter { !it.isDeleted }.sortedBy { it.id }
+
+    override fun search(fragment: String): List<IdeaSeed> =
+        all().filter { it.keyword.contains(fragment) }
+
+    override fun insert(seed: IdeaSeed): Long {
+        val id = nextId++
+        stored += seed.copy(id = id)
+        return id
+    }
+
+    override fun recordPick(id: Long, pickedAt: Long) {
+        val index = stored.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            val seed = stored[index]
+            stored[index] = seed.copy(pickedCount = seed.pickedCount + 1, lastPickedAt = pickedAt, updatedAt = pickedAt)
+        }
     }
 }
