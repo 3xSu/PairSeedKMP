@@ -100,8 +100,10 @@ class EventGrower(
         val growText = caller.complete(buildGrowRequest(context, seed, duplicates)).text
         val grow = parseGrowOutput(growText, allowedCodes, context.checklist.size) ?: return Attempt.Technical
 
-        // 长文查重（目标 = 近期 + 清单；命中的那条进下一轮提示词）
-        val dedupTargets = context.config.recentSummaries + context.checklist.map { it.summary }
+        // 长文查重（目标 = 近期 + 清单 + 在流程内（待确认 / 进行中）；命中的那条进下一轮提示词）
+        val dedupTargets = context.config.recentSummaries +
+            context.checklist.map { it.summary } +
+            context.config.inFlightSummaries
         val hit = try {
             deduplicator.longText(grow.summary, dedupTargets)
         } catch (e: DedupParseException) {

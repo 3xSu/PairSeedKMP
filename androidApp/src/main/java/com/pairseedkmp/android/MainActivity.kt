@@ -23,6 +23,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // 打开 / 回前台 = 新会话，空闲重计时（离线空白不累积）；清零数据重来会整条换栈，这里跟着换
-        if (::holder.isInitialized) holder.deps.settler.onSessionStart(System.currentTimeMillis())
+        if (::holder.isInitialized) {
+            holder.deps.settler.onSessionStart(System.currentTimeMillis())
+            // 08 触发链：结算之后信号给 UI——调试壳每秒对账，涨了 = 新一轮前台 → 自动补货 / 清单满长种子
+            holder.deps.foreground.bump()
+        }
     }
 }

@@ -34,6 +34,8 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // 面板调用装饰器测试：suspend 调用走 runTest
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

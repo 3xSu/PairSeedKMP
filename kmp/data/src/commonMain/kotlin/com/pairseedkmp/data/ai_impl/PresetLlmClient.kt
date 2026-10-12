@@ -15,7 +15,8 @@ import com.pairseedkmp.domain.ai.LlmTask
  * - 判定：`{verdict, reason, violated_rule?}`，verdict ∈ PASS / UNCERTAIN / REJECT
  * - 种子生长：`{keyword, theme}`；查重：`{same, index?}`
  *
- * 内容口径：动作码 ∈ 调试种子动作库（walk / sit / say / lie_down / eat）。
+ * 内容口径：动作码 ∈ 调试种子动作库（walk / sit / say / lie_down / eat）；生成段 6 条——
+ * 自动补货连着出多条，3 条轮转太早开始重样（08 扩充）。
  * 轮转：同 task 第 n 次调用回第 n 条（取模回到第一条）——连续补货 / 重试时拿得到不同内容。
  * 计数器不设锁（单线程调用口径：UI / 生长编排都在主协程）。
  */
@@ -81,6 +82,35 @@ class PresetLlmClient : LlmClient {
                     { "action": "eat" }
                   ],
                   "after": 1
+                }
+                """.trimIndent(),
+                """
+                {
+                  "summary": "把零食袋推过去，两个人分着吃完了",
+                  "steps": [
+                    { "action": "sit" },
+                    { "action": "say", "params": { "speaker": "actor", "text": "最后一把，归你。" } },
+                    { "action": "eat" }
+                  ]
+                }
+                """.trimIndent(),
+                """
+                {
+                  "summary": "把毯子给对方搭上，各自躺下准备睡了",
+                  "steps": [
+                    { "action": "walk" },
+                    { "action": "lie_down" }
+                  ]
+                }
+                """.trimIndent(),
+                """
+                {
+                  "summary": "递了只耳机过去，挨着听完一首歌",
+                  "steps": [
+                    { "action": "walk" },
+                    { "action": "say", "params": { "speaker": "actor", "text": "就一首，听完再忙。" } },
+                    { "action": "sit" }
+                  ]
                 }
                 """.trimIndent(),
             ),

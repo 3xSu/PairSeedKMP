@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -72,4 +73,11 @@ sqldelight {
             packageName.set("com.pairseedkmp.data")
         }
     }
+}
+
+// 冒烟（06 步骤 5：真实 API）的实时输出直达控制台——默认被 Gradle 收进报告、console 看不到
+tasks.withType<Test>().configureEach {
+    testLogging { showStandardStreams = true }
+    // API 冒烟默认不跑（防全量测试误触真实网络/计费）：显式 -Ppairseed.smoke=true 才放行
+    systemProperty("pairseed.smoke", providers.gradleProperty("pairseed.smoke").getOrElse("false"))
 }

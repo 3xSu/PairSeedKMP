@@ -37,7 +37,7 @@ class PresetLlmClientTest {
     fun 所有任务的预设都能被解析骨架解析() = runTest {
         val client = PresetLlmClient()
         for (task in LlmTask.entries) {
-            repeat(4) { round -> // 覆盖轮转一整圈
+            repeat(6) { round -> // 覆盖最长轮转一整圈（EVENT_GROW 6 条）
                 val schema = if (task == LlmTask.EVENT_TAG) tagStageSchema(round % 2 == 0) else null
                 val text = client.complete(request(task, schema)).text
                 assertNotNull(LlmJson.parse(text), "task=$task 第 ${round + 1} 条解析失败：$text")
@@ -50,7 +50,7 @@ class PresetLlmClientTest {
         val client = PresetLlmClient()
         val allowed = setOf("walk", "sit", "say", "lie_down", "eat") // debug 种子动作库
         val summaries = mutableSetOf<String>()
-        repeat(3) {
+        repeat(6) {
             val root = parse(client.complete(request(LlmTask.EVENT_GROW)).text)
             summaries += root.getValue("summary").jsonPrimitive.content
 
@@ -61,14 +61,14 @@ class PresetLlmClientTest {
                 assertTrue(code in allowed, "动作码不在闭集：$code")
             }
         }
-        assertEquals(3, summaries.size, "轮转应产出 3 条不同内容")
+        assertEquals(6, summaries.size, "轮转应产出 6 条不同内容")
     }
 
     @Test
     fun 说步骤只给speaker与text_时长留给链路程序算() = runTest {
         val client = PresetLlmClient()
         var found = false
-        repeat(3) {
+        repeat(6) {
             val root = parse(client.complete(request(LlmTask.EVENT_GROW)).text)
             for (step in root.getValue("steps").jsonArray) {
                 val obj = step.jsonObject
@@ -126,8 +126,8 @@ class PresetLlmClientTest {
     @Test
     fun 预设按列表轮转_用尽回到第一条() = runTest {
         val client = PresetLlmClient()
-        val texts = List(4) { client.complete(request(LlmTask.EVENT_GROW)).text }
-        assertEquals(texts[0], texts[3], "第 4 次应回到第 1 条")
+        val texts = List(7) { client.complete(request(LlmTask.EVENT_GROW)).text }
+        assertEquals(texts[0], texts[6], "第 7 次应回到第 1 条")
         assertNotEquals(texts[0], texts[1])
     }
 

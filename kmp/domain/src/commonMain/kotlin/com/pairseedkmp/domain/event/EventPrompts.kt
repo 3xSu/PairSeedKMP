@@ -39,7 +39,7 @@ const val SPEECH_CHARS_PER_SECOND: Int = 4
  * 生成段系统词（从零写，骨架沿用端侧 spike v3.1 已验证形态）：三段「定义 / 用途 / 依据」+ 完整写法示例。
  * 钉死两条（05 计划）：① 动作码只能从【动作库】挑（只挑不编）；② `after` 只从【清单】指认编号。
  */
-private val GROW_SYSTEM_PROMPT = """
+internal val GROW_SYSTEM_PROMPT = """
     你是角色互动事件生成器。根据【输入】里的角色设定、关系、当前时间、动作库、参考素材和灵感种子，生成一条新的互动事件。
     输出包含下面 4 个部分。每个部分先讲清：它是什么（定义）、系统拿它做什么（用途）、你依据什么填（依据）。全部读完再开始写。
 
@@ -259,7 +259,7 @@ internal fun digestSayLines(steps: List<EventStep>): List<String> =
  * 打标段系统词（骨架沿用端侧 spike v3.1/A′ 已验证形态）：档位 = 客观属性（不是越界判断），
  * verbal 只看「台词」那几行；时段用四码、空数组 = 不限。
  */
-private val TAG_SYSTEM_PROMPT = """
+internal val TAG_SYSTEM_PROMPT = """
     请阅读用户消息里给出的一条已经生成好的事件（已整理成文字：概要 / 动作顺序 / 台词），完成两件事：
     1. 给这项事件填两个客观档位（comparison_axes）；
     2. 判断它适合在哪些时段发生（suitable_time）。

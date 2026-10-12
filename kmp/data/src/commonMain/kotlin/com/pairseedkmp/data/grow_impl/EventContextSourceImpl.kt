@@ -6,6 +6,7 @@ import com.pairseedkmp.data.grow.toGrowCharacter
 import com.pairseedkmp.data.grow.toGrowDocumentRef
 import com.pairseedkmp.data.grow.toGrowRelation
 import com.pairseedkmp.data.grow.toGrowScene
+import com.pairseedkmp.data.judgment.toJudgeHardRule
 import com.pairseedkmp.domain.event.ChecklistEvent
 import com.pairseedkmp.domain.event.DEFAULT_DOC_SNIPPETS_PER_TYPE
 import com.pairseedkmp.domain.event.DEFAULT_RECENT_EVENT_COUNT
@@ -16,6 +17,9 @@ import com.pairseedkmp.domain.event.GrowDocumentRef
 import com.pairseedkmp.domain.event.GrowPackConfig
 import com.pairseedkmp.domain.event.assemble
 import com.pairseedkmp.domain.event.parseJsonStringList
+import com.pairseedkmp.domain.judgment.JudgeHardRule
+import com.pairseedkmp.domain.judgment.SceneVisibility
+import com.pairseedkmp.domain.judgment.projectForbiddenCodes
 
 /**
  * [EventContextSource] 的 SQLDelight 实现（读法照壳层 resolveContext）：
@@ -56,6 +60,8 @@ class EventContextSourceImpl(private val database: PairSeedDatabase) : EventCont
             scene = sceneRow.toGrowScene(),
             behaviors = database.behavior_templatesQueries.selectAllBehaviors()
                 .executeAsList().map { it.toGrowBehavior() },
+            forbiddenActionCodes = (judgeRules(actorRow.id) + judgeRules(targetRow.id))
+                .projectForbiddenCodes(SceneVisibility.fromCode(sceneRow.location_type)),
             documents = documents(pack.pack_code),
             recentSummaries = database.eventsQueries.selectRecentOccurred(DEFAULT_RECENT_EVENT_COUNT.toLong())
                 .executeAsList().map { it.summary },
@@ -63,12 +69,22 @@ class EventContextSourceImpl(private val database: PairSeedDatabase) : EventCont
                 .selectEventsByStatus(EventStatus.IN_LIST.code)
                 .executeAsList()
                 .map { ChecklistEvent(eventId = it.id, summary = it.summary) },
+            // 在流程内（待确认 + 进行中）：只进查重靶集——它们会回到 / 仍在清单，复读要挡
+            inFlightSummaries = (
+                database.eventsQueries.selectEventsByStatus(EventStatus.PENDING_CONFIRMATION.code).executeAsList() +
+                    database.eventsQueries.selectEventsByStatus(EventStatus.IN_PROGRESS.code).executeAsList()
+                ).map { it.summary },
         )
         return config.assemble(now, utcOffsetSeconds)
     }
 
     private fun spec(characterId: Long) =
         database.character_specsQueries.selectCharacterSpecByCharacterId(characterId).executeAsOneOrNull()
+
+    /** 角色硬规则（判定用行）——生成侧只借它的码投影（06 §4 [0] 预防层）。 */
+    private fun judgeRules(characterId: Long): List<JudgeHardRule> =
+        database.character_hard_rulesQueries.selectHardRulesByCharacter(characterId)
+            .executeAsList().map { it.toJudgeHardRule() }
 
     /** 参考素材：voice_ref（说话样本）+ activity_ref（活动素材）各取前几条。 */
     private fun documents(packCode: String): List<GrowDocumentRef> {

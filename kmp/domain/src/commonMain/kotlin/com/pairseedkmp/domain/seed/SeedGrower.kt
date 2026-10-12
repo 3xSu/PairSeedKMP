@@ -137,7 +137,7 @@ private val DedupType.displayCn: String
         DedupType.SAME_THING -> "同一件事"
     }
 
-private val SEED_GROW_SYSTEM_PROMPT = """
+internal val SEED_GROW_SYSTEM_PROMPT = """
     你是灵感种子生长器。程序给你一批生活化素材，你从中选一个词或短语作为【灵感词】，并给它配一个【互动主题】。
     - 灵感词 2-6 个字，取自素材，是一对角色之间一件小事的起点（如「雨后的泥土味」）
     - 互动主题是不超过 10 个字的短语，概括种子指向的互动方向（如「气味与记忆」）

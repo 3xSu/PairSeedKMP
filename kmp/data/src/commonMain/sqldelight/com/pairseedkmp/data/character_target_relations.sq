@@ -22,3 +22,12 @@ selectRelationsBetween:
 SELECT * FROM character_target_relations
 WHERE character_id IN (?, ?)
 ORDER BY id;
+
+-- 关系一行（节点 08 调试种子 / 测试用；有方向，双向各插一条，重插会撞 UNIQUE 防重）
+insertCharacterTargetRelation:
+INSERT INTO character_target_relations (
+    character_id, target_character_id, toward_target_summary, default_distance,
+    likely_initiation_modes, sensitive_progression_tags, safe_comfort_actions,
+    direct_addressing_summary, reference_addressing_summary, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

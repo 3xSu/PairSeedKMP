@@ -27,3 +27,11 @@ SELECT * FROM document_snippets
 WHERE pack_code = ? AND doc_type = ? AND is_deleted = 0
 ORDER BY id
 LIMIT ?;
+
+-- 文档片段（节点 08 调试种子 / 测试用；doc_code 唯一，重插会撞 UNIQUE 防重）
+insertDocumentSnippet:
+INSERT INTO document_snippets (
+    doc_code, doc_type, pack_code, scope, character_code, title, summary, body,
+    tags, source_ref, is_deleted, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);

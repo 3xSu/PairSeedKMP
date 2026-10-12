@@ -75,8 +75,8 @@ data class ChecklistEvent(val eventId: Long, val summary: String)
 
 /**
  * 静态生成配置（data 读侧读出：角色六表 / 场景 / 动作库 / 文档库；不含时间与事件）。
- * [forbiddenActionCodes] = 硬规则码投影（`character_hard_rules.forbidden_codes` 按场景匹配后
- * 的禁码集——列随 06 判定节点加；05 先把"只给 allowed 码"的过滤管线建好，接线前恒空 = 全码可用）。
+ * [forbiddenActionCodes] = 硬规则码投影：双方（actor + target）`character_hard_rules.forbidden_codes`
+ * 按场景匹配后的并集（06 接线；恒生效恒减，限场景的旗标匹配才减——`projectForbiddenCodes`）。
  */
 data class GrowPackConfig(
     val packId: Long,
@@ -95,6 +95,11 @@ data class GrowPackConfig(
     val recentSummaries: List<String> = emptyList(),
     /** 清单（IN_LIST、未过期），按 id 升序。 */
     val checklistEvents: List<ChecklistEvent> = emptyList(),
+    /**
+     * 在流程内事件的概要（待确认 + 进行中，按 id 升序）——只进查重靶集、不渲染进提示词：
+     * 这两类会回到 / 仍在清单，需挡复读（2026-10-11 装机发现的 #3/#7、#1/#11 双胞胎）。
+     */
+    val inFlightSummaries: List<String> = emptyList(),
 )
 
 /** 组装完成的生成上下文（提示词渲染 + 复检都用它）。 */

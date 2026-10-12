@@ -32,3 +32,11 @@ CREATE TABLE character_specs (
 -- 某角色的设定卡（一角色一条；没有 → 无行）
 selectCharacterSpecByCharacterId:
 SELECT * FROM character_specs WHERE character_id = ?;
+
+-- 设定卡（节点 08 调试种子 / 测试用；一角色一条，重插同角色会撞 UNIQUE 防重）
+insertCharacterSpec:
+INSERT INTO character_specs (
+    character_id, aliases, soft_axes, speech_style_summary, preferred_affection_modes,
+    disliked_affection_modes, body_spec, wardrobe, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

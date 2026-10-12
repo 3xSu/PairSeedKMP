@@ -15,8 +15,8 @@ import kotlin.test.assertTrue
 
 /**
  * 节点 05：生成上下文读侧——真 SQLite（JVM 驱动、内存库）跑上下文组装。
- * character_specs / character_target_relations / document_snippets 没有插入命名查询（调试种子也不种），
- * 这三张表用 raw SQL 种。
+ * 节点 08 起 character_specs / character_target_relations / document_snippets 有插入命名查询，
+ * 种数据全走命名查询（逻辑删除的样本插完用一条 UPDATE 翻旗标）。
  */
 class EventContextSourceTest {
 
@@ -73,7 +73,7 @@ class EventContextSourceTest {
         db.runtime_profilesQueries.insertRuntimeProfile(packId, sceneId, null, 0, null, day, day)
     }
 
-    /** 角色设定卡（raw SQL：无插入命名查询）。 */
+    /** 角色设定卡（节点 08 插入查询）。 */
     private fun insertSpec(
         characterId: Long,
         aliases: String? = null,
@@ -82,45 +82,38 @@ class EventContextSourceTest {
         preferred: String? = null,
         disliked: String? = null,
     ) {
-        driver.execute(
-            identifier = null,
-            sql = """
-                INSERT INTO character_specs (character_id, aliases, soft_axes, speech_style_summary,
-                    preferred_affection_modes, disliked_affection_modes, body_spec, wardrobe, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, '{}', '{}', 0, 0)
-            """.trimIndent(),
-            parameters = 6,
-        ) {
-            bindLong(0, characterId)
-            bindString(1, aliases)
-            bindString(2, softAxes)
-            bindString(3, speechStyle)
-            bindString(4, preferred)
-            bindString(5, disliked)
-        }
+        db.character_specsQueries.insertCharacterSpec(
+            character_id = characterId,
+            aliases = aliases,
+            soft_axes = softAxes,
+            speech_style_summary = speechStyle,
+            preferred_affection_modes = preferred,
+            disliked_affection_modes = disliked,
+            body_spec = "{}",
+            wardrobe = "{}",
+            created_at = day,
+            updated_at = day,
+        )
     }
 
-    /** 角色关系一行（raw SQL：无插入命名查询）。 */
+    /** 角色关系一行（节点 08 插入查询）。 */
     private fun insertRelation(from: Long, to: Long, summary: String, distance: String, modes: String? = null) {
-        driver.execute(
-            identifier = null,
-            sql = """
-                INSERT INTO character_target_relations (character_id, target_character_id, toward_target_summary,
-                    default_distance, likely_initiation_modes, sensitive_progression_tags, safe_comfort_actions,
-                    direct_addressing_summary, reference_addressing_summary, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 0, 0)
-            """.trimIndent(),
-            parameters = 5,
-        ) {
-            bindLong(0, from)
-            bindLong(1, to)
-            bindString(2, summary)
-            bindString(3, distance)
-            bindString(4, modes)
-        }
+        db.character_target_relationsQueries.insertCharacterTargetRelation(
+            character_id = from,
+            target_character_id = to,
+            toward_target_summary = summary,
+            default_distance = distance,
+            likely_initiation_modes = modes,
+            sensitive_progression_tags = null,
+            safe_comfort_actions = null,
+            direct_addressing_summary = null,
+            reference_addressing_summary = null,
+            created_at = day,
+            updated_at = day,
+        )
     }
 
-    /** 文档片段（raw SQL：无插入命名查询）。 */
+    /** 文档片段（节点 08 插入查询；逻辑删除的样本插完翻旗标）。 */
     private fun insertDocument(
         code: String,
         type: String,
@@ -129,21 +122,26 @@ class EventContextSourceTest {
         body: String,
         deleted: Boolean = false,
     ) {
-        driver.execute(
-            identifier = null,
-            sql = """
-                INSERT INTO document_snippets (doc_code, doc_type, pack_code, scope, title, body,
-                    is_deleted, created_at, updated_at)
-                VALUES (?, ?, ?, 'global', ?, ?, ?, 0, 0)
-            """.trimIndent(),
-            parameters = 6,
-        ) {
-            bindString(0, code)
-            bindString(1, type)
-            bindString(2, packCode)
-            bindString(3, title)
-            bindString(4, body)
-            bindLong(5, if (deleted) 1 else 0)
+        db.document_snippetsQueries.insertDocumentSnippet(
+            doc_code = code,
+            doc_type = type,
+            pack_code = packCode,
+            scope = "global",
+            character_code = null,
+            title = title,
+            summary = null,
+            body = body,
+            tags = null,
+            source_ref = null,
+            created_at = day,
+            updated_at = day,
+        )
+        if (deleted) {
+            driver.execute(
+                identifier = null,
+                sql = "UPDATE document_snippets SET is_deleted = 1 WHERE doc_code = ?",
+                parameters = 1,
+            ) { bindString(0, code) }
         }
     }
 
@@ -188,10 +186,10 @@ class EventContextSourceTest {
         insertProfile(packId, sceneId)
         db.pair_shared_specsQueries.insertPairSharedSpec(packId, "同居室友", "轻松日常", """["冲突","冷战"]""", day, day)
         db.behavior_templatesQueries.insertBehaviorTemplate(
-            "walk", "WALK", "Walk somewhere", "走路", "single", "none", 9, "{}", 2, day, day,
+            "walk", "WALK", "Walk somewhere", "走路", "single", "none", 1, 9, "{}", 2, day, day,
         )
         db.behavior_templatesQueries.insertBehaviorTemplate(
-            "say", "SAY", "Say something", "说话", "single", "none", 5, "{}", 1, day, day,
+            "say", "SAY", "Say something", "说话", "single", "none", 1, 5, "{}", 1, day, day,
         )
         return Triple(packId, actorId, targetId)
     }
@@ -222,11 +220,12 @@ class EventContextSourceTest {
         insertDocument("v3", "voice_ref", "cp_other", "别人组的样本", "不该出现")
         insertDocument("a1", "activity_ref", "cp_ab", "活动素材", "楼下散步")
 
-        // 事件：一条在清单 + 两条已发生（新的在前）+ 一条待确认（不进清单）
+        // 事件：一条在清单 + 两条已发生（新的在前）+ 一条待确认 + 一条进行中（后两类只进查重靶集、不进清单）
         insertEvent(31, packId, actorId, sceneId, "想收拾房间", EventStatus.IN_LIST)
         insertEvent(32, packId, actorId, sceneId, "一起看了会儿书", EventStatus.OCCURRED, occurredAt = now - 3_600_000L)
         insertEvent(33, packId, actorId, sceneId, "各自忙了一下午", EventStatus.OCCURRED, occurredAt = now - 7_200_000L)
         insertEvent(34, packId, actorId, sceneId, "要不要去散步", EventStatus.PENDING_CONFIRMATION)
+        insertEvent(35, packId, actorId, sceneId, "正走在路上", EventStatus.IN_PROGRESS)
 
         val context = EventContextSourceImpl(db).snapshot(now = now, utcOffsetSeconds = 0)!!
 
@@ -274,6 +273,9 @@ class EventContextSourceTest {
         assertEquals(listOf(1), context.checklist.map { it.number })
         assertEquals(31L, context.checklist.single().eventId)
         assertEquals("想收拾房间", context.checklist.single().summary)
+
+        // 在流程内（查重靶集用）：待确认在前、进行中在后；都只在此列、不进清单
+        assertEquals(listOf("要不要去散步", "正走在路上"), context.config.inFlightSummaries)
     }
 
     @Test
@@ -292,6 +294,33 @@ class EventContextSourceTest {
         val context = EventContextSourceImpl(db).snapshot(now = now, utcOffsetSeconds = 0)!!
         assertEquals(listOf("say", "walk"), context.allowedBehaviors.map { it.code })
         assertEquals(packId, context.config.packId)
+    }
+
+    @Test
+    fun 组装_禁码投影_按场景匹配_双方并集() {
+        val (_, actorId, targetId) = seedBase()
+        db.behavior_templatesQueries.insertBehaviorTemplate(
+            "hug", "HUG", "Hug", "拥抱", "pair", "none", 4, 6, "{}", 3, day, day,
+        )
+        db.behavior_templatesQueries.insertBehaviorTemplate(
+            "lean", "LEAN", "Lean", "靠", "pair", "none", 3, 6, "{}", 4, day, day,
+        )
+        // A：恒生效禁 say；限私密禁 hug；限公开禁 lean
+        db.character_hard_rulesQueries.insertHardRule(actorId, "no_say", "always", "不主动说话", """["say"]""", null, 0, day, day)
+        db.character_hard_rulesQueries.insertHardRule(actorId, "no_hug_private", "private", "私下不拥抱", """["hug"]""", null, 1, day, day)
+        db.character_hard_rulesQueries.insertHardRule(actorId, "no_lean_public", "public", "公开场合不靠着", """["lean"]""", null, 2, day, day)
+        // B：限公开禁 walk；无码投影的规则（null）不进投影
+        db.character_hard_rulesQueries.insertHardRule(targetId, "no_walk_public", "public", "公开场合不一起走", """["walk"]""", null, 0, day, day)
+        db.character_hard_rulesQueries.insertHardRule(targetId, "no_longtext", "always", "不会读长文", null, null, 1, day, day)
+
+        // 场景私密（seedBase 的"家"）：减 always 的 say + private 的 hug；public 的 walk / lean 保留
+        val privateContext = EventContextSourceImpl(db).snapshot(now, 0)!!
+        assertEquals(listOf("walk", "lean"), privateContext.allowedBehaviors.map { it.code })
+
+        // 切公开：减 always 的 say + public 的 walk / lean；private 的 hug 放回
+        driver.execute(identifier = null, sql = "UPDATE scenes SET location_type = 'PUBLIC'", parameters = 0)
+        val publicContext = EventContextSourceImpl(db).snapshot(now, 0)!!
+        assertEquals(listOf("hug"), publicContext.allowedBehaviors.map { it.code })
     }
 
     @Test

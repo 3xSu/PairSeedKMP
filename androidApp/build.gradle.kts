@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.sqldelight.runtime)
     // 壳层两个 store（01：Keystore / prefs 读写挪 IO 线程）
     implementation(libs.kotlinx.coroutines.core)
+    // 壳层装配调试面板（07）要直接建素材 / LLM 的 HttpClient（data 里是 implementation，不外露）
+    implementation(libs.ktor.client.core)
     // 节点 02 spike：端侧模型验证页（仅 debug 变体）
     debugImplementation(libs.litertlm.android)
 }

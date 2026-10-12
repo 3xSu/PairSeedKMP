@@ -16,7 +16,7 @@ const val DEFAULT_SHORT_WORD_THRESHOLD: Double = 0.75
 /** 长文「同一件事」判定温度：取低值求稳定（生成链路用高温，两边口径不同）。 */
 private const val DEDUP_LONG_TEXT_TEMPERATURE: Double = 0.2
 
-private val LONG_TEXT_SYSTEM_PROMPT =
+internal val LONG_TEXT_SYSTEM_PROMPT =
     """你是查重判定器。判断【待查概要】与【已有清单】中某一条是否为「同一件事」——同一次或同一类行动换了个说法；只是主题相关、具体做法不同不算。只输出 JSON，不要解释。"""
 
 /**

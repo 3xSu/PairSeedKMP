@@ -30,15 +30,22 @@ import com.pairseedkmp.domain.event.EventStatus
 import com.pairseedkmp.domain.event.RunningEvent
 import com.pairseedkmp.domain.event.TriggerDecision
 import com.pairseedkmp.domain.event.durationSeconds
+import com.pairseedkmp.ui.debug.panel.DebugPanelScreen
+import com.pairseedkmp.ui.debug.panel.DebugPanelState
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * 调试壳单页：事件列表 / 此刻面板 / 操作区——形态锁死"看得见 + 点得动"，
  * 不做样式 / 动画 / 历史页（计划步骤 6）。
+ * [panel] != null 时页尾追加调试面板（07：现状 / 跑链路 / 提示词 / Provider / 样例）。
  */
 @Composable
-fun DebugShellScreen(shell: DebugShellState, onClearAndReseed: () -> Unit) {
+fun DebugShellScreen(
+    shell: DebugShellState,
+    onClearAndReseed: () -> Unit,
+    panel: DebugPanelState? = null,
+) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -52,6 +59,7 @@ fun DebugShellScreen(shell: DebugShellState, onClearAndReseed: () -> Unit) {
             TriggerCard(shell)
             ActionsCard(shell, onClearAndReseed)
             EventsCard(shell)
+            panel?.let { DebugPanelScreen(it) }
         }
     }
 }
@@ -138,8 +146,13 @@ private fun ActionsCard(shell: DebugShellState, onClearAndReseed: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { shell.manualSettle() }) { Text("手动结算一次") }
+            Button(
+                onClick = { shell.autoGrowNow() },
+                enabled = shell.context != null && !shell.autoBusy,
+            ) { Text("跑·自动链") }
             Button(onClick = onClearAndReseed, enabled = shell.canReset) { Text("清空数据重来") }
         }
+        shell.autoStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Text("上次操作：${shell.feedback}", style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -192,7 +205,7 @@ private fun eventMeta(event: Event): String = buildString {
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -207,7 +220,7 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
-private fun InfoLine(label: String, value: String) {
+internal fun InfoLine(label: String, value: String) {
     Row {
         Text("$label：", style = MaterialTheme.typography.bodySmall)
         Text(value, style = MaterialTheme.typography.bodySmall)

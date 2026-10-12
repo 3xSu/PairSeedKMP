@@ -23,3 +23,9 @@ SELECT last_insert_rowid();
 -- 组内全部角色，按 id 排（壳层解析 actor / target：第一个 = actor、第二个 = target）
 selectCharactersByPack:
 SELECT * FROM characters WHERE pack_id = ? AND is_deleted = 0 ORDER BY id;
+
+-- ===== 命名查询（节点 06：判定）=====
+
+-- 按 id 单查（判定读侧：候选引用的 actor / target 是谁）；已删 / 不存在 → 无行
+selectCharacterById:
+SELECT * FROM characters WHERE id = ? AND is_deleted = 0;

@@ -1,4 +1,6 @@
--- 角色硬边界：用户填的"不会做的事"；判定时作为约束喂给 AI（读 description 自然语言），不做标签匹配
+-- 角色硬边界：用户填的"不会做的事"；两条通道——forbidden_codes 码投影走程序通道
+-- （判定直通拒 / 生成侧码头过滤），description 自然语言喂 AI（生成读、判定 AI 路线读）；不做标签匹配
+-- forbidden_codes：基础动作库码的 JSON 数组（如 ["hug","lean"]）；null / 空 = 无投影（该规则只走 AI 通道）
 -- trigger_tags 旧列不建（不再是拦截依据之后就没有读者了）；纯附属表，不加 is_deleted
 CREATE TABLE character_hard_rules (
     id INTEGER PRIMARY KEY,
@@ -6,9 +8,23 @@ CREATE TABLE character_hard_rules (
     rule_key TEXT NOT NULL,                   -- 规则键
     scope TEXT NOT NULL,                      -- 作用域：always / public / private
     description TEXT NOT NULL,                -- 规则描述（自然语言；AI 读它）
+    forbidden_codes TEXT,                     -- 禁码投影 JSON 数组（程序通道用；null = 只走 AI 通道）
     notes TEXT,                               -- 补充说明
     sort_order INTEGER NOT NULL DEFAULT 0,    -- 顺序
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     UNIQUE (character_id, rule_key)           -- 角色内规则键唯一（防重）
 );
+
+-- ===== 命名查询（节点 06：判定）=====
+
+-- 某角色全部硬规则（判定读侧 + 生成侧禁码投影）；按 sort_order
+selectHardRulesByCharacter:
+SELECT * FROM character_hard_rules WHERE character_id = ? ORDER BY sort_order, id;
+
+-- 种子 / 测试用
+insertHardRule:
+INSERT INTO character_hard_rules (
+    character_id, rule_key, scope, description, forbidden_codes, notes, sort_order, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);

@@ -69,6 +69,7 @@ private fun seed(id: Long, keyword: String = "雨后的泥土味") = IdeaSeed(
 private fun context(
     checklist: List<ChecklistEvent> = emptyList(),
     recent: List<String> = emptyList(),
+    inFlight: List<String> = emptyList(),
 ): EventGrowContext = GrowPackConfig(
     packId = 7,
     packName = "A 与 B",
@@ -82,6 +83,7 @@ private fun context(
     ),
     recentSummaries = recent,
     checklistEvents = checklist,
+    inFlightSummaries = inFlight,
 ).assemble(now = 8 * MILLIS_PER_MINUTE, utcOffsetSeconds = 0)
 
 private const val GROW_WITH_SAY =
@@ -208,6 +210,36 @@ class EventGrowerTest {
         assertTrue(second.contains("【上一轮生成的概要被判定为重复】"), second)
         assertTrue(second.contains("「一起去了趟超市」——同一件事"), "带像的那条与类型：$second")
         assertTrue(!client.requests[0].user.contains("【上一轮生成的概要被判定为重复】"), "首轮无反馈")
+    }
+
+    @Test
+    fun 查重靶集含在流程内_待确认与进行中的复读命中() = runTest {
+        val client = TaskScriptedClient()
+            .on(LlmTask.EVENT_GROW, GROW_SILENT, GROW_SILENT)
+            .on(LlmTask.DEDUP, """{"same": true, "index": 3}""", """{"same": true, "index": 3}""")
+        val source = FakeContextSource(
+            context(
+                checklist = listOf(ChecklistEvent(11, "想收拾房间")),
+                recent = listOf("一起看了会儿书"),
+                inFlight = listOf("在窗边安静地坐着"),
+            ),
+        )
+
+        val result = grower(
+            client,
+            FakeSeedRepository(listOf(seed(1))),
+            source,
+            attemptsPerSeed = 2,
+            seedsPerRound = 1,
+        ).grow(now = 900L, utcOffsetSeconds = 0)
+
+        assertEquals(2, assertIs<EventGrowResult.Exhausted>(result).attempts, "两次都被判重 → 用尽")
+        val first = client.requests[1].user
+        assertTrue(first.contains("1. 一起看了会儿书"), first)
+        assertTrue(first.contains("2. 想收拾房间"), first)
+        assertTrue(first.contains("3. 在窗边安静地坐着"), "待确认 / 进行中进靶集（装机连爆双胞胎的修复）：$first")
+        val second = client.requests[2].user
+        assertTrue(second.contains("「在窗边安静地坐着」——同一件事"), "在流程内的那条作重复反馈进下一轮：$second")
     }
 
     @Test

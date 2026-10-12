@@ -13,6 +13,7 @@ CREATE TABLE behavior_templates (
     description TEXT,                         -- 行为描述（英文，供 LLM 理解）——AI 挑动作就靠它
     description_cn TEXT,                      -- 中文简短介绍（供用户 / 前端展示）；{actor} / {target} 占位符约定保留
     scope TEXT NOT NULL,                      -- single / pair（单人或双人动作）
+    physical_level INTEGER NOT NULL DEFAULT 1, -- 身体接触档位 1–4（判定用：物理档 = 步骤码取 max；与角色「身体接触」四档同一把尺）
     position_change TEXT NOT NULL DEFAULT 'none', -- none / approach / retreat / carry
     direction TEXT NOT NULL DEFAULT 'bidirectional', -- bidirectional = {actor} 映 actor_code（不交换）/ b_to_a = 交换映射
     duration_seconds INTEGER NOT NULL DEFAULT 5, -- 行为执行时长（秒）；进度条、事件时长加总用
@@ -37,12 +38,18 @@ WHERE behavior_code = ? AND is_deleted = 0;
 insertBehaviorTemplate:
 INSERT OR IGNORE INTO behavior_templates (
     behavior_code, behavior_name, description, description_cn, scope, position_change,
-    duration_seconds, limbs, sort_order, created_at, updated_at
+    physical_level, duration_seconds, limbs, sort_order, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- ===== 命名查询（节点 05：事件生长）=====
 
 -- 全部动作（生成上下文的动作库：AI 只挑不编；按 sort_order）
 selectAllBehaviors:
 SELECT * FROM behavior_templates WHERE is_deleted = 0 ORDER BY sort_order, id;
+
+-- ===== 命名查询（节点 06：判定）=====
+
+-- 码 → 身体接触档位投影 + 动作名（判定第 1 层：物理档 = 步骤码取 max；动作名供 AI 冷读把码渲染成人话）
+selectBehaviorLevels:
+SELECT behavior_code, physical_level, behavior_name FROM behavior_templates WHERE is_deleted = 0;

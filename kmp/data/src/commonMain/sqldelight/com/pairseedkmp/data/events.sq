@@ -9,7 +9,7 @@ CREATE TABLE events (
     summary TEXT NOT NULL,                    -- 一句话概要；历史页显示它，判定和查重也吃它
     steps TEXT NOT NULL,                      -- 步骤序列 JSON：[{ "action": 基础动作 code, "params": {…} }]；params 随动作定（「说」= speaker / text / duration_sec）
     comparison_axes TEXT,                     -- 事件客观属性 JSON：verbal_directness / emotion_visibility（1-4 档；verbal 缺失 = 整件事没人说话）；物理维不在这里（码表从动作码推）；不走判定的事件（如半固定）为 NULL
-    confirmation_payload TEXT,                -- 确认弹框要显示的东西（AI 的疑问等）；非待确认事件为 NULL；内部结构随确认链路定稿
+    confirmation_payload TEXT,                -- 确认弹框要显示的东西（AI 的疑问等）；非待确认事件为 NULL；系统路线 v1 形状见 domain `systemConfirmationPayload`（source / reason / missing[] | risk{value, deviations[]}），AI 路线见 `aiConfirmationPayload`（source / reason 原话）
     suitable_time TEXT,                       -- 合适时段，半角逗号分隔多值（MORNING,EVENING）；半固定事件发生才落表、无此概念 → NULL
     status TEXT NOT NULL,                     -- PENDING_CONFIRMATION / IN_LIST / IN_PROGRESS / OCCURRED / REJECTED
     origin TEXT NOT NULL,                     -- SEED / SCHEDULED / PRESET
