@@ -1,5 +1,6 @@
 package com.pairseedkmp.domain.judgment.samples
 
+import com.pairseedkmp.debugfixtures.JudgeSampleSet
 import com.pairseedkmp.domain.judgment.JudgmentOutcome
 import com.pairseedkmp.domain.judgment.RejectReason
 import com.pairseedkmp.domain.judgment.SystemJudge

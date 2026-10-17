@@ -35,6 +35,8 @@ kotlin {
             implementation(libs.kotlin.test)
             // runTest 虚拟时间（LlmCaller 重试 / 超时测试不用真等）
             implementation(libs.kotlinx.coroutines.test)
+            // 判定样例集（测试夹具；仅测试源集引用，不进业务 main）
+            implementation(projects.kmp.debugFixtures)
         }
     }
 }

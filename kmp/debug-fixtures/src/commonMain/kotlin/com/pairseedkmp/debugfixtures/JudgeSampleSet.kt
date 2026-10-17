@@ -1,5 +1,9 @@
-package com.pairseedkmp.domain.judgment.samples
+package com.pairseedkmp.debugfixtures
 
+import com.pairseedkmp.domain.judgment.samples.JudgeSample
+import com.pairseedkmp.domain.judgment.samples.SampleCause
+import com.pairseedkmp.domain.judgment.samples.SampleGroup
+import com.pairseedkmp.domain.judgment.samples.SampleVerdict
 import com.pairseedkmp.domain.event.ComparisonAxes
 import com.pairseedkmp.domain.event.EventCandidate
 import com.pairseedkmp.domain.event.EventStep

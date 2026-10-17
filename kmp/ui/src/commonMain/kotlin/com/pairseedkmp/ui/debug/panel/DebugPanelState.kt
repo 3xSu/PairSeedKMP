@@ -30,7 +30,6 @@ import com.pairseedkmp.domain.judgment.RejectReason
 import com.pairseedkmp.domain.judgment.RiskDim
 import com.pairseedkmp.domain.judgment.SystemJudge
 import com.pairseedkmp.domain.judgment.UncertainReason
-import com.pairseedkmp.domain.judgment.samples.JudgeSampleSet
 import com.pairseedkmp.domain.judgment.systemDecider
 import com.pairseedkmp.domain.seed.GrowResult
 import com.pairseedkmp.domain.seed.IdeaSeed
@@ -418,7 +417,7 @@ class DebugPanelState(
     /** 样例集一键跑（系统三支；门槛 15 / 65）——校准表：期望 / 实际 / R / 一致。 */
     fun runSamples() {
         val judge = SystemJudge()
-        val rows = JudgeSampleSet.ALL.map { sample ->
+        val rows = deps.samples.map { sample ->
             val judgment = judge.judge(sample.snapshot)
             val actual = verdictOf(judgment.outcome)
             val cause = causeOf(judgment.outcome)

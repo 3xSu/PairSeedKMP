@@ -7,6 +7,7 @@ import com.pairseedkmp.domain.ai.SecretStore
 import com.pairseedkmp.domain.event.BehaviorDurationSource
 import com.pairseedkmp.domain.event.EventContextSource
 import com.pairseedkmp.domain.judgment.JudgmentSnapshotSource
+import com.pairseedkmp.domain.judgment.samples.JudgeSample
 import com.pairseedkmp.domain.repository.EventRepository
 import com.pairseedkmp.domain.repository.RuntimeProfileRepository
 import com.pairseedkmp.domain.repository.SeedRepository
@@ -32,4 +33,6 @@ class DebugPanelDeps(
     /** 按当前配置造 LLM client；null = 该模式没有可用实现（端侧未接入）。 */
     val llmClientFor: suspend (AiSettings) -> LlmClient?,
     val promptStore: PromptOverrideStore,
+    /** 判定样例（调试夹具；由壳层从 debug 依赖注入，ui 不直接依赖 fixtures 模块）。 */
+    val samples: List<JudgeSample>,
 )

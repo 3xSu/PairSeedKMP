@@ -54,4 +54,6 @@ dependencies {
     implementation(libs.ktor.client.core)
     // 节点 02 spike：端侧模型验证页（仅 debug 变体）
     debugImplementation(libs.litertlm.android)
+    // 判定样例夹具（仅 debug 变体；release 不依赖 fixtures 模块）
+    debugImplementation(projects.kmp.debugFixtures)
 }

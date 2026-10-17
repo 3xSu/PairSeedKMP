@@ -108,6 +108,7 @@ class ShellHolder(private val context: Context) {
                 profileRepository = profileRepository,
                 llmClientFor = llmClientFor,
                 promptStore = DebugPromptOverrideStore(context),
+                samples = DebugSamples.ALL,
             )
         } else {
             null
